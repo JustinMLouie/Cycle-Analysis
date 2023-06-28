@@ -5,18 +5,28 @@ clc;
 % Import arbin file 
 % folder = 'G:\Shared drives\Data\Arbin data\_Sealed Cell Data\_Cycling\_ProcessedData';
 % [file, path] = uigetfile('.xlsx', 'Select Folder', folder);
-[file, path] = uigetfile('.xlsx');
-filename = string(fullfile(path, file));
+[rawFile, rawPath] = uigetfile('.xlsx');
+raw_filename = string(fullfile(rawPath, rawFile));
+
+[proc_file, processed_path] = uigetfile('.xlsx');
+proc_filename = string(fullfile(processed_path, proc_file));
 
 fprintf("Justin's version")
 
 % Import raw data, test parameters
-raw = readmatrix(filename, 'Sheet', 2);
+raw = readmatrix(raw_filename, 'Sheet', 2);
 fprintf("\n")
-fprintf(filename)
-params = f_comment(filename); 
+fprintf(raw_filename)
+params = f_comment(raw_filename); 
 
-
+% Import processed data, used to compare final values and obtain v0
+proc_sum = readmatrix(proc_filename, 'Sheet', 1); % processed summary workbook sheet
+proc_flux = readmatrix(proc_filename, 'Sheet', 2); % processed flux data
+proc_mc = readmatrix(proc_filename, 'Sheet', 3); % processed mass capacity
+proc_cc = readmatrix(proc_filename, 'Sheet', 4); % processed charge capacity
+proc_dc = readmatrix(proc_filename, 'Sheet', 5); % processed discharge capacity
+proc_ce = readmatrix(proc_filename, 'Sheet', 6); % processed coulumbic efficiency 
+proc_fe = readmatrix(proc_filename, 'Sheet', 7); % processed faradaic capacity
 
 % Assign raw data to matrix columns
 ex = 2:height(raw); % Create matrix height
@@ -41,7 +51,8 @@ plot(data(:, 6)); % check detrended data for kinks
 % Parameters
 psi_pa = 6894.76; % Pa psi-1
 F = 96485; % Faraday constant, C mol-1
-V0 = 6.5; % cell volume, mL 
+% V0 = 6.5; % cell volume, mL  
+V0 = proc_sum(8,2); % cell volume, read from the processed data file
 A = 2e-4; % elecrode area, m^2
 MW_CO2 = 44.01; % molecular weight of CO2, g/mol
 MW_Q = [590, 100]; % molecular weight of quinone polymers, g/mol
