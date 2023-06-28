@@ -50,8 +50,7 @@ plot(data(:, 6)); % check detrended data for kinks
 %% Calculate Cell Data
 % Parameters
 psi_pa = 6894.76; % Pa psi-1
-F = 96485; % Faraday constant, C mol-1
-% V0 = 6.5; % cell volume, mL  
+F = 96485; % Faraday constant, C mol-1 
 V0 = proc_sum(8,2); % cell volume, read from the processed data file
 A = 2e-4; % elecrode area, m^2
 MW_CO2 = 44.01; % molecular weight of CO2, g/mol
