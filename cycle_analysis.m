@@ -22,7 +22,7 @@ params = f_comment(raw_filename);
 % Import processed data, used to compare final values and obtain v0
 proc_sum = readmatrix(proc_filename, 'Sheet', 1); % processed summary workbook sheet
 proc_flux = readmatrix(proc_filename, 'Sheet', 2); % processed flux data
-proc_mc = readmatrix(proc_filename, 'Sheet', 3); % processed mass capacity
+proc_mc = readmatrix(proc_filename, 'Sheet', 3); % processed mass capture
 proc_cc = readmatrix(proc_filename, 'Sheet', 4); % processed charge capacity
 proc_dc = readmatrix(proc_filename, 'Sheet', 5); % processed discharge capacity
 proc_ce = readmatrix(proc_filename, 'Sheet', 6); % processed coulumbic efficiency 
@@ -71,7 +71,7 @@ params_c.c_range = zeros(cycles, 1);
 params_c.c_abs = zeros(cycles, 1);
 params_c.j_max = zeros(cycles, 1);
 params_c.c_fe = zeros(cycles, 1);
-params_c.c_util = zeros(cycles, 1);
+params_c.c_util = zeros(cycles, 1); % not used, can be removed
 
 % Initialize model data arrays
 params_m.beta = zeros(cycles, 4);
@@ -98,7 +98,7 @@ for i = 1:cycles
     c_cap = c(ind_cap); % charge capacity, uAh
     
     % Perform window averaging
-    p_avg = movmean(p_cap, 1); % current method of smoothing data and modeling
+    p_avg = movmean(p_cap, 1); 
     c_avg = movmean(c_cap, 1);
     dp = range(p_avg); % total pressure drop, psi
     dc = range(c_avg); % charge capacity, uAh
@@ -140,7 +140,7 @@ for i = 1:cycles
 
     % Return related pressure quantitites of interest
     params_p.dp(i) = dp; % psi
-    params_p.dm(i) = psi_gCO2 * dp; % g CO2
+    params_p.dm(i) = psi_gCO2 * dp / A; % g CO2
     params_p.flux_max(i) = flux_max; % g/(m^2 * h)
     params_p.flux_avg(i, :) = flux_avg;
 
@@ -191,7 +191,35 @@ plot(x, params_c.fe, 'k', LineWidth=1.5);
 xlabel('Cycle Number')
 ylabel('Faradaic Efficiency')
 
+%% Processed Data Comparison
+proc_flux_max = proc_flux(:, 2); % max flux matrix
+proc_flux20 = proc_flux(:, 3); % 20% flux matrix
+proc_flux40 = proc_flux(:, 5); % 40% flux matrix
+proc_flux60 = proc_flux(:, 7); % 60% flux matrix
+proc_flux80 = proc_flux(:, 9); % 80% flux matrix
+
+proc_charge_cap = proc_cc(:, 2);
+
+err_flux_max = percent_error(params_p.flux_max, proc_flux_max);
+err_flux_20 = percent_error(params_p.flux_avg(:, 1), proc_flux20);
+err_flux_40 = percent_error(params_p.flux_avg(:, 2), proc_flux40);
+err_flux_60 = percent_error(params_p.flux_avg(:, 3), proc_flux60);
+err_flux_80 = percent_error(params_p.flux_avg(:, 4), proc_flux80);
+
+err_mc = percent_error(params_p.dm, proc_cc(:, 2));
+
+err_fe = percent_error(reshape(params_c.fe, size(params_c.fe, 2), 1), proc_fe(:, 2));
+
+% TODO: fix charge cap calcs
+% Issue: c_cap is a 301x1 matrix, while proc_charge_cap is 99 x 1
+% err_cc = percent_error(c_cap , proc_charge_cap);
+
 fprintf("Script completed")
+
+% Calculates relative percent error
+function [error] = percent_error(analyzedData, processedData) 
+    error = 100 * (analyzedData - processedData) / processedData;
+end
 
 % Extracts cycle data into individual variables (one-liner for readability)
 function [t_cyc, j, c, r, p] = data_ex(i, cyc, data)
