@@ -38,7 +38,6 @@ cyc = raw(ex, 5); % cycle number
 % TODO: add labels to graph
 figure();
 plot(data(:, 5), LineWidth=1); % check for breakpoints
-% bp = input('Index of breakpoint: ');
 bp = [];
 data(:, 6) = detrend(data(:, 5), 10, bp, Continuous=false); % detrends the data
 plot(data(:, 6)); % check detrended data for kinks
@@ -62,7 +61,7 @@ psi_gCO2 = 1e-6 * psi_pa * MW_CO2 * V0 / R_T; % gCO2 psi-1 (given RT, cell volum
 % Initialize pressure data arrays
 cycles = cyc(end) - 2; % ignore the class cycle due to truncation
 params_p.dp = zeros(cycles,1);
-params_p.dm = zeros(cycles,1);
+params_p.dm = zeros(cycles,1);        
 params_p.flux_max = zeros(cycles, 1);
 params_p.flux_avg = zeros(cycles, 6);
 
@@ -81,9 +80,6 @@ params_m.r2 = zeros(cycles, 1);
 p_quinone = 0.103; % wt% quinone in electrode 
 c_hyp = 1e-3 * 2 * F * p_quinone * params.wt_w / (MW_Q(1)); % hypothetical charge, C
 
-% TODO: include print statements to understand how for loop works, step by
-% step
-
 % Loop through cycles
 for i = 1:cycles
     % assign columns to explicit fariables for readability
@@ -98,6 +94,8 @@ for i = 1:cycles
     c_cap = c(ind_cap); % charge capacity, uAh
     
     % Perform window averaging
+    % TODO: Once means are more aligned, update movmean to compare 2-3
+    % numbers
     p_avg = movmean(p_cap, 1); 
     c_avg = movmean(c_cap, 1);
     dp = range(p_avg); % total pressure drop, psi
@@ -107,6 +105,9 @@ for i = 1:cycles
     p_norm = (p_avg - min(p_avg)) ./ dp; % normalized pressure profile
     p_drops = 0.01 * [20, 40, 60, 80, 90]; % unitless percentages
     t_avg = f_findt(t_cap, p_norm, p_drops); % returns all average times for target drops
+    temp = [t_avg, t_cap(end)];
+    temp2 = t_cap(end);
+    temp3 = [p_drops, 1];
     flux_avg = dp * [p_drops, 1] ./ ([t_avg, t_cap(end)]); % psi/s
     flux_avg = 3600 * psi_gCO2 * flux_avg / A; % convert flux to g/(m^2 * h)
 
@@ -116,9 +117,8 @@ for i = 1:cycles
     flux_max = -min(polyval(p_der, t_cap(t_cap < t_avg(4)))); % max flux under 80% capture time, psi/s
     flux_max = 3600 * psi_gCO2 * dp * flux_max / A; % convert flux to g/(m^2 * h)
 
-    % Have not taken the time to analyze this yet
     try
-        % perform pressure fitting using 2-regime exponential
+        % Performs pressure fitting using 2-regime exponential
         % beta0 = [0.95, 0.05, mean(t_avg(2:3)), 50 * t_avg(2)]; % return
         % model params, residuals
         % r2 = 1 - sum(resid.^2) / sum((p_norm - mean(p_norm)).^2);
@@ -178,7 +178,6 @@ legend('20% Flux', '40% Flux', '60% Flux', '80% Flux')
 xlabel('Cycle Number')
 ylabel('Avg Flux g/(m^2 * h)')
 
-
 % FIGURE 3: Plot charge capacity
 figure(); 
 subplot(2, 1, 1);
@@ -198,27 +197,24 @@ proc_flux40 = proc_flux(:, 5); % 40% flux matrix
 proc_flux60 = proc_flux(:, 7); % 60% flux matrix
 proc_flux80 = proc_flux(:, 9); % 80% flux matrix
 
-proc_charge_cap = proc_cc(:, 2);
-
 err_flux_max = percent_error(params_p.flux_max, proc_flux_max);
 err_flux_20 = percent_error(params_p.flux_avg(:, 1), proc_flux20);
 err_flux_40 = percent_error(params_p.flux_avg(:, 2), proc_flux40);
 err_flux_60 = percent_error(params_p.flux_avg(:, 3), proc_flux60);
 err_flux_80 = percent_error(params_p.flux_avg(:, 4), proc_flux80);
 
-err_mc = percent_error(params_p.dm, proc_cc(:, 2));
+err_mc = percent_error(params_p.dm, proc_mc(:, 10));
 
-err_fe = percent_error(reshape(params_c.fe, size(params_c.fe, 2), 1), proc_fe(:, 2));
+err_fe = percent_error(params_c.fe', proc_fe(:, 2));
 
-% TODO: fix charge cap calcs
-% Issue: c_cap is a 301x1 matrix, while proc_charge_cap is 99 x 1
-% err_cc = percent_error(c_cap , proc_charge_cap);
+% TODO: fix charge cap calc
+% err_cc = percent_error(c_abs , proc_charge_cap);
 
 fprintf("Script completed")
 
 % Calculates relative percent error
 function [error] = percent_error(analyzedData, processedData) 
-    error = 100 * (analyzedData - processedData) / processedData;
+    error = 100 * (analyzedData - processedData) ./ processedData;
 end
 
 % Extracts cycle data into individual variables (one-liner for readability)
