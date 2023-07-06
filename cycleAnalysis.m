@@ -22,10 +22,15 @@ secToHr = 1/3600;%
 
 %% Setting up 
 numCycles = max(rawData(:, 5)); 
-finalMCVals = zeros(numCycles - 2, 9); % 20% 30% 40% 50% 60% 70 80 90 Full
-finalFluxVals = zeros(numCycles - 2, 10); % Max 20% 30% 40% 50% 60% 70 80 90 Full
-finalCCVals = zeros(numCycles - 2, 2); % uAh, Coulumbs
-finalFEVals = zeros(numCycles - 2, 1);
+mcVals = zeros(numCycles - 2, 9); % 20% 30% 40% 50% 60% 70 80 90 Full
+fluxVals = zeros(numCycles - 2, 10); % Max 20% 30% 40% 50% 60% 70 80 90 Full
+ccVals = zeros(numCycles - 2, 2); % uAh, Coulumbs
+feVals = zeros(numCycles - 2, 1);
+
+% Values to Compare Against
+normalizedFlux = zeros(numCycles - 2, 10); % Max 20% 30% 40% 50% 60% 70 80 90 Full
+interpolatedFlux = zeros(numCycles - 2, 10); % Max 20% 30% 40% 50% 60% 70 80 90 Full
+movingMeanFlux = zeros(numCycles - 2, 10); % Max 20% 30% 40% 50% 60% 70 80 90 Full
 
 percentages = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
 
@@ -40,34 +45,32 @@ for i = 2:numCycles - 1
     stepIndexVals = chargeRegionData(5,6);
     chargeRegionData = chargeRegionData(chargeRegionData(:, 6) == stepIndexVals, :);
 
-    timeVals = chargeRegionData(:, 4); % Test time values, s
+    timeVals = chargeRegionData(:, 4); % Step time values, s
     pressureVals = chargeRegionData(:, 19); % Auxilary Presure Values, psi
     chargeVals = chargeRegionData(:, 10) * 1e6; % Charge Capacity, uAh
 
     % Create biexponential fit for pressure curve
     pFitCurve = fit(timeVals, pressureVals, 'exp2'); % Creates biexponential model of P vs t
-    pDeriv = differentiate(pFitCurve, timeVals); % Differentiates pFitCurve with datapoints at x = timeVals
-
     pFitEval = pFitCurve(timeVals); % Calculates pressures at given times on pFitCurve
 
     % Stores the values of the fitted exponential curve
     pFitTimePressure = [];
-    pFitTimePressure(:, 1) = timeVals; % set column 1 to test time values
+    pFitTimePressure(:, 1) = timeVals; % set column 1 to time values
     pFitTimePressure(:, 2) = pFitEval;
 
     % Calculates minimum pressure drops required for the following pressure calculations
     % 20%, 30%, 40%, 50%, 60%, 70%, 80%, 90%, Full
-    minPressures = zeros(1, 9);
+    minP = zeros(1, 9);
     pStart = pFitEval(1);
     pEnd = pFitEval(end);
     dPFit = pStart - pEnd; % Pressure drop
 
-    minPressures = pStart - dPFit * percentages; % Minimum pressure values for each avg flux calc
+    minP = pStart - dPFit * percentages; % Minimum pressure values for each avg flux calc
 
     % Avg calculations at 20-100%
     minPData = [];
     for j = 1:9
-        minPData =  pFitTimePressure(pFitTimePressure(:, 2) > minPressures(j), :); % Constrains dataset to have minimum threshold pressure
+        minPData =  pFitTimePressure(pFitTimePressure(:, 2) > minP(j), :); % Constrains dataset to have minimum threshold pressure
         % fprintf("Min Data for " + percentages(j) + " with minimum pressure " + minPressures(j));
         pStartMinPData = minPData(1, 2);
         pEndMinPData = minPData(end, 2);
@@ -87,14 +90,14 @@ for i = 2:numCycles - 1
         mc = dPGramsCO2 / cellArea;
         
         % Records final calculations
-        finalMCVals(i - 1, j + 1) = mc;
-        finalFluxVals(i - 1, j + 1) = flux;    
-
+        mcVals(i - 1, j + 1) = mc;
+        fluxVals(i - 1, j + 1) = flux;    
     end
 
     % Calculates Max Flux
+    pDeriv = differentiate(pFitCurve, timeVals); % Differentiates pFitCurve with datapoints at x = timeVals
     gDeriv = -1 * psiToGCO2(pDeriv) / cellArea / secToHr; % Convert pDeriv from psi to g CO2
-    finalFluxVals(i - 1, 1) = max(gDeriv);
+    fluxVals(i - 1, 1) = max(gDeriv);
 
     % Calculates CC Vals
     ccuAh = max(chargeVals); % charge capacity, uAh
@@ -104,20 +107,54 @@ for i = 2:numCycles - 1
     fe = 100 * (psiToGCO2(dPFit) / mwCO2) * F / (ccCoulumbs);
     
     % Assign values at end of loop
-    finalCCVals(i - 1, 1) = ccuAh;
-    finalCCVals(i - 1, 2) = ccCoulumbs;
-    finalFEVals(i - 1) = fe;
+    ccVals(i - 1, 1) = ccuAh;
+    ccVals(i - 1, 2) = ccCoulumbs;
+    feVals(i - 1) = fe;
+
+    % Calculate Normalized Flux Values 
+    pNormalized = normalize(pressureVals); % normalizes raw pressure values
+    pNFitCurve = fit(timeVals, pNormalized, 'exp2'); % Creates biexponential model of normalized P vs t
+    pNFitVals = pNFitCurve(timeVals); % Calculates normalized pressure at each time
+    pNormalizedTimePressure = []; 
+    pNormalizedTimePressure(:, 1) = timeVals; % set col 1 to time values
+    pNormalizedTimePressure(:, 2) = pNFitVals; % set col 2 to normalized p vals
+ 
+    % Calculates minimum pressure drops required for the following pressure calculations
+    minNP = zeros(1, 9);
+    pNStart = pNFitVals(1);
+    pNEnd = pNFitVals(end);
+    dPNFit = pNStart - pNEnd; % Pressure drop
+    minNP = pNStart - dPNFit * percentages; % Pressures at x%
+
+    normalizedFluxData = [];
+    for j = 1:9
+        normalizedFluxData =  pNormalizedTimePressure(pNormalizedTimePressure(:, 2) > minNP(j), :); % Constrains dataset to have minimum threshold pressure
+        pStartNoramlized = normalizedFluxData(1, 2);
+        pEndNormalized = normalizedFluxData(end, 2);
+        tStart = normalizedFluxData(1, 1);
+        tEnd = normalizedFluxData(end, 1);
+        dP = pStartMinPData - pEndMinPData; % pressure drop
+        dt = tEnd - tStart;
+
+         % Calculates dP (grams CO2)
+        dPGramsCO2 = psiToGCO2(dP); % Convert dp from psi to g
+
+        % Calculates Flux
+        dtHours = dt * secToHr; % Convert dt from s to h
+        flux = dPGramsCO2 / (cellArea * dtHours); % calculate cycle flux, gCo2 / h
+
+        % Records final calculations
+        normalizedFlux(i - 1, j + 1) = flux; 
+    end
+
+    % Calculates Max Flux Normalized
+    pNDeriv = differentiate(pNFitCurve, timeVals); % Differentiates pFitCurve with datapoints at x = timeVals
+    gNDeriv = -1 * psiToGCO2(pNDeriv) / cellArea / secToHr; % Convert pDeriv from psi to g CO2
+    normalizedFlux(i - 1, 1) = max(gNDeriv);
 
 end
 
 fprintf("Script ended" + "\n");
-
-% Note: Difference in values between cycleAnalysis and
-% hundredCycleParameterCalculatorSingleCase stems from using
-% chargeRegionData vs cycData during calculations
-% ChargeRegionData is a smaller subset of cycData, and excludes some
-% values
-
 
 % Converts psi to grams CO2
 function gCO2 = psiToGCO2(psi) 
@@ -131,3 +168,15 @@ function gCO2 = psiToGCO2(psi)
     molsCO2 = (pascals * cellVolume) / (R * T);
     gCO2 = molsCO2 * mwCO2;
 end
+
+
+%{
+
+    TODO:
+    1. Create a normalized version of flux - calculate and compare values
+    2. Create a interpolated version of flux - calculate and compare values
+    3. Create a moving average version of flux - calculate and compare
+    values
+
+%}
+
