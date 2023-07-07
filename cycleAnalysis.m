@@ -29,27 +29,20 @@ secToHr = 1/3600; %
 numCycles = max(rawData(:, 5)); 
 mcVals = zeros(numCycles - 2, 9); % 20% 30% 40% 50% 60% 70 80 90 Full
 rawFluxVals = zeros(numCycles - 2, 10); % Max 20% 30% 40% 50% 60% 70 80 90 Full
-cc_Vals = zeros(numCycles - 2, 2); % uAh, Coulumbs
-fe_Vals = zeros(numCycles - 2, 1);
+ccVals = zeros(numCycles - 2, 2); % uAh, Coulumbs
+feVals = zeros(numCycles - 2, 1);
 
 % Flux Values to Compare Against
 % Max 20% 30% 40% 50% 60% 70 80 90 Full
 procFluxVals = procData(:, 2:end);
-% n_fluxVals = zeros(numCycles - 2, 10); 
-% i_fluxVals = zeros(numCycles - 2, 10); 
-% mm_fluxVals = zeros(numCycles - 2, 10);
-% mmt_fluxVals = zeros(numCycles - 2, 10);
-
-% n_dpVals = zeros(numCycles - 2, 10);
-% mm_dpVals = zeros(numCycles - 2, 10);
-% mmt_dpVals = zeros(numCycles - 2, 10);
+iFluxVals = zeros(numCycles - 2, 10); % Max 20% 30% 40% 50% 60% 70 80 90 Full
 
 percentages = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
 
 %% Calculating Values
 
 % Loops through each cycle, skips the incomplete cycle 1
-for i = 2:numCycles - 1
+for i = 2:numCycles - 1 % iterate through cycles
     
     % Extracts cycle data
     cycData = rawData(rawData(:, 5) == i, :); % Data in cycle i
@@ -70,7 +63,6 @@ for i = 2:numCycles - 1
     pDeriv = differentiate(pFitCurve, timeVals); % Differentiates pFitCurve with datapoints at x = timeVals
     gDeriv = -1 * psiToGCO2(pDeriv) / cellArea / secToHr; % Convert pDeriv from psi to g CO2
     rawFluxVals(i - 1, 1) = max(gDeriv);
-
 
     % Stores the values of the fitted exponential curve
     pFitTimePressure = [];
@@ -93,13 +85,13 @@ for i = 2:numCycles - 1
     fe = 100 * (psiToGCO2(dPFit) / mwCO2) * F / (ccCoulumbs);
     
     % Assign values at end of loop
-    cc_Vals(i - 1, 1) = ccuAh;
-    cc_Vals(i - 1, 2) = ccCoulumbs;
-    fe_Vals(i - 1) = fe;
+    ccVals(i - 1, 1) = ccuAh;
+    ccVals(i - 1, 2) = ccCoulumbs;
+    feVals(i - 1) = fe;
 
     % Avg calculations at 20-100%
     minPData = [];
-    for j = 1:9
+    for j = 1:9 % iterate through percentages
         minPData =  pFitTimePressure(pFitTimePressure(:, 2) > minP(j), :); % Constrains dataset to have minimum threshold pressure
         % fprintf("Min Data for " + percentages(j) + " with minimum pressure " + minPressures(j));
         pStartMinPData = minPData(1, 2);
@@ -108,15 +100,12 @@ for i = 2:numCycles - 1
         tEnd = minPData(end, 1);
         dP = pStartMinPData - pEndMinPData; % pressure drop
         dt = tEnd - tStart;
-
-         % Calculates dP (grams CO2)
-        dPGramsCO2 = psiToGCO2(dP); % Convert dp from psi to g
-
-        % Calculates Flux
-        dtHours = dt * secToHr; % Convert dt from s to h
-        flux = dPGramsCO2 / (cellArea * dtHours); % calculate cycle flux, gCo2 / h
+        
+        % Calculates flux
+        flux = calcFlux(dP, dt, cellArea);
 
         % Calculates Mass Capture Values
+        dPGramsCO2 = psiToGCO2(dP);
         mc = dPGramsCO2 / cellArea;
         
         % Records final calculations
@@ -127,7 +116,7 @@ for i = 2:numCycles - 1
     rawFluxVals = round(rawFluxVals, 2);
 
     diffProc = 100 * (rawFluxVals - procFluxVals) ./ procFluxVals;
-    % diffProc =  round(diffProc);
+
 
     %{
 
@@ -302,20 +291,28 @@ function gCO2 = psiToGCO2(psi)
     cellVolume = 5.45884579 * 1e-3; % processed data cell volume (L)
     R = 8.314 * 1e3; % Gas const ,  (L * Pa)/(mol * K)
     T = 298; % Temperature, assume RT = 298K
-    mwCO2 = 44.01; % Molecular weight of CO2, g/mol
+    mwCO2 = 44; % Molecular weight of CO2, g/mol
 
     pascals = psi * psiToPa;
     molsCO2 = (pascals * cellVolume) / (R * T);
     gCO2 = molsCO2 * mwCO2;
 end
 
+function flux = calcFlux(dp, dt, cellArea) 
+    secToHr = 1/3600;
+    dtHours = dt * secToHr; 
+    dPGramsCO2 = psiToGCO2(dp);
+    flux = dPGramsCO2 / (cellArea * dtHours); % calculate cycle flux, gCo2 / h
+end
+
 %{
 
     TODO:
-    1. Create a normalized version of flux - calculate and compare values
+    1. Import Processed Data - compare flux values. Make sure that
+    difference in fluxes = 0
     2. Create a interpolated version of flux - calculate and compare values
-    3. Create a moving average version of flux - calculate and compare
-    values
+    3. Create a normalized --> interpolated version of flux
+
 
 %}
 
