@@ -2,10 +2,12 @@ clear;
 clc;
 
 %% Loading rawData file
-fprintf("Add Raw file" + "\n")
+fprintf("Add Raw file \n")
 [rawFile, rawPath] = uigetfile('.xlsx');
 rawFileName = string(fullfile(rawPath, rawFile));
 rawData = readmatrix(rawFileName, 'Sheet', 2); % Pulls data from 2nd sheet of rawData file
+
+fprintf("File loaded \n")
 
 %% Set Up
 % Constants used in calculations
@@ -24,17 +26,17 @@ feVals = zeros(numCycles - 2, 1);
 
 % Flux Values to Compare Against
 % Max 20% 30% 40% 50% 60% 70 80 90 Full
-% procFluxVals = procData(:, 2:end);
-fluxValsInterp = zeros(numCycles - 2, 10); % Max 20% 30% 40% 50% 60% 70 80 90 Full
-fluxValsNorm = zeros(numCycles - 2, 10); % Max 20% 30% 40% 50% 60% 70 80 90 Full
+fluxValsInterp = zeros(numCycles - 2, 10); % Interpolated Flux Values
+fluxValsNorm = zeros(numCycles - 2, 10); % Interpolated Flux Values
+fluxValsMMC = zeros(numCycles - 2, 10); % Interpolated Moving Mean Centered Values
+fluxValsDetrend = zeros(numCycles - 2, 10); % Interpolated Moving Mean Trailing Values
 
 % Percentages that avg flux are calculated at
 percentages = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
 
-minPTimes = zeros(numCycles - 2, 10);
-interpTimes = zeros(numCycles - 2, 10);
-
 %% Calculating Values
+
+fprintf("Starting calculations \n")
 
 % Loops through each cycle, skips the incomplete cycle 1
 for i = 2:numCycles - 1 % iterate through cycles
@@ -53,23 +55,36 @@ for i = 2:numCycles - 1 % iterate through cycles
     % Calculates time-pressure values of biexponential fit for pressure curve
     pFitTimePressure = setTimePresureVals(timeVals, pressureVals);
 
-    % Calculates Biexponential Max Flux
-    fluxVals(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea);
-
     % Calculate Normalized Pressure Data
     normalizingValue = min(pressureVals); % Calculates baseline pressure 
     normalizingDP = range(pressureVals); % Calculates range
-    pressureValsNorm = (pressureVals - normalizingValue) / normalizingDP; % Normalizes pressures between 0 and 1
+    pressureValsNorm = (pressureVals - normalizingValue); % Normalizes pressures between 0 and 1
     pFitTimePressureNorm = setTimePresureVals(timeVals, pressureValsNorm);
 
-    % Calculates Normalized Max Flux
-    fluxValsNorm(i - 1, 1) = calculateFluxMax(timeVals, pressureValsNorm, cellArea);
+    % Calculate Moving Mean Centered Data
+    pressureValsMMCentered = movmean(pressureVals, 3); % Calculates Moving mean pressure values
+    pFitTimePressureMMC = [];
+    pFitTimePressureMMC(:, 1) = timeVals; 
+    pFitTimePressureMMC(:, 2) = pressureValsMMCentered;
 
-    % Calculates minimum pressure drops required for the following pressure calculations
+    % Calculate Detrended Dada
+    pressureValsDetrended = detrend(pressureVals);
+    pFitTimePressureDetrend = setTimePresureVals(timeVals, pressureValsNorm);
+    % Question for Monday: do we want to fit the detrended data, or just go
+    % off of the raw of it 
+    
+    % Calculates Max Flux Values
+    fluxVals(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea); % Biexponential
+    fluxValsInterp(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea); % Normalized
+    fluxValsNorm(i - 1, 1) = calculateFluxMax(timeVals, pressureValsNorm, cellArea); % Normalized
+    fluxValsDetrend(i - 1, 1) = calculateFluxMax(timeVals, pressureValsDetrended, cellArea); % Detrended
+    fluxValsMMC(i - 1, 1) = calculateFluxMax(timeVals, pressureValsMMCentered, cellArea); % Moving Mean Centered
+    
+    % Calculates minimum pressure drops for avg flux calcs
     minP = calculateMinP(pFitTimePressure, percentages);
-
-    % Calculates min pressure props for norm
     minPNorm = calculateMinP(pFitTimePressureNorm, percentages);
+    minPDetrend = calculateMinP(pFitTimePressureDetrend, percentages);
+    minPMMC = calculateMinP(pFitTimePressureMMC, percentages);
 
     % Calculates CC Vals
     ccuAh = max(chargeVals); % charge capacity, uAh
@@ -95,35 +110,37 @@ for i = 2:numCycles - 1 % iterate through cycles
         dP = pStart - pEnd; % Pressure drop
         mc = psiToGCO2(dP) / cellArea;
 
-        % Biexponential Calculations
-        flux = calculateFluxAvgs(pFitTimePressure, minP(j));
+        % Flux Calculations
+        flux = calculateFluxAvgs(pFitTimePressure, minP(j)); % Biexponetial
+        fluxInterp = interpolateFluxAvgs(pFitTimePressure, minP(j)); % Biexponential --> Interpolated 
+        fluxNorm = calculateFluxAvgs(pFitTimePressureNorm, minPNorm(j)); % Normalized --> Biexponential
+        fluxDetrend = calculateFluxAvgs(pFitTimePressureDetrend, minPDetrend(j)); % Detrend --> Biexponential
+        fluxMMC = calculateFluxAvgs(pFitTimePressureMMC, minPMMC(j)); % MM Centered --> Interpolated 
+        % Because MMC is not unique (1:1 x:y), interpolation cannot be run.
+        % Would otherwise have to do MMC --> biexponential -->
+        % interpolation, or MMC --> Calculation
         
-        % Normalized --> Biexponential Calculations
-        fluxNorm = calculateFluxAvgs(pFitTimePressureNorm, minPNorm(j));
-
-        % Biexponential --> Interpolated Calculations
-        fluxInterp = interpolateFluxAvgs(pFitTimePressure, minP(j));
-        
-        % % Normalized --> Biexponential --> Interpolated Calculations
-        % fluxNormInterp = interpolateFlux(pFitTimePressureNorm, minPNorm(j));
-        % fluxNormInterp = fluxNormInterp / pStartNorm ; % Find some way to update
-
         % Records final calculations
         mcVals(i - 1, j + 1) = mc;
         fluxVals(i - 1, j + 1) = flux;   
         fluxValsInterp(i - 1, j + 1) = fluxInterp;
         fluxValsNorm(i - 1, j + 1) = fluxNorm;
-
+        fluxValsDetrend(i - 1, j + 1) = fluxDetrend;
+        fluxValsMMC(i - 1, j + 1) = fluxMMC;
+        
     end
     
-    procFluxVals = round(procFluxVals, 2);
     fluxVals = round(fluxVals, 2);
     fluxValsInterp = round(fluxValsInterp, 2);
     fluxValsNorm = round(fluxValsNorm, 2);
+    fluxValsDetrend = round(fluxValsDetrend, 2);
+    fluxValsMMC = round(fluxValsMMC, 2);
 
     % Percent Diff Calculations
     diffInterp = 100 * (fluxValsInterp - fluxVals) ./ fluxVals;
-    diffNorm = 100 * (fluxValsNorm - fluxVals ./ fluxVals);
+    diffNorm = 100 * (fluxValsNorm - fluxVals) ./ fluxVals;
+    diffDetrend = 100 * (fluxValsDetrend - fluxVals) ./ fluxVals;
+    diffMMC = 100 * (fluxValsMMC - fluxVals) ./ fluxVals;
 
 end
 
@@ -131,7 +148,6 @@ end
 fprintf("Script ended" + "\n");
 
 %% Extraneous Functions
-
 
 function timePressureVals = setTimePresureVals(timeVals, pressureVals)
     %{
@@ -226,10 +242,6 @@ function maxFlux = calculateFluxMax(timeVals, pressureVals, cellArea)
     maxFlux = max(gDeriv);
 end
 
-%% 
 
-%{
-Detrending
 
-%}
 
