@@ -350,6 +350,7 @@ Input file structure, numbered columns:
     coulombicEfficiency = round(coulombicEfficiency, 2);
     faradaicEfficiency = round(faradaicEfficiency, 2);
     massCaptureData = round(massCaptureData, 4);
+    
 
     % Add cycle column
     fluxData = [cycles maxFlux fluxDataFractions];
@@ -369,7 +370,7 @@ Input file structure, numbered columns:
     generalChargeVoltageDep = [cycles chargeVoltage dischargeVoltage maxFlux ...
         chargeCapacityCoulombs dischargeCapacityCoulombs coulombicEfficiency(:, 2) faradaicEfficiency(:, 2)];
 
-
+%{
     %% Generate plots of key over cycles information, demonstrating decay etc.
 
     % Flux
@@ -461,6 +462,8 @@ Input file structure, numbered columns:
     xlim([(min(chargeVoltage)-0.2) (max(chargeVoltage) + 0.2)])
     saveas(chargeVoltageFig, chargeTitle, "png");
     close(chargeVoltageFig)
+
+    %}
 end
 
 
