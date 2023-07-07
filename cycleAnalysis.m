@@ -7,11 +7,10 @@ fprintf("Add Raw file" + "\n")
 rawFileName = string(fullfile(rawPath, rawFile));
 rawData = readmatrix(rawFileName, 'Sheet', 2); % Pulls data from 2nd sheet of rawData file
 
-fprintf("Add Proc file" + "\n")
 
-[procFile, procPath] = uigetfile('.xlsx');
-procFileName = string(fullfile(procPath, procFile));
-procData = readmatrix(procFileName, 'Sheet', 2); % Pulls data from 2nd sheet of processedData file
+% [procFile, procPath] = uigetfile('.xlsx');
+% procFileName = string(fullfile(procPath, procFile));
+% procData = readmatrix(procFileName, 'Sheet', 2); % Pulls data from 2nd sheet of processedData file
 
 %% Set Up
 % Constants used in calculations
@@ -34,10 +33,13 @@ feVals = zeros(numCycles - 2, 1);
 
 % Flux Values to Compare Against
 % Max 20% 30% 40% 50% 60% 70 80 90 Full
-procFluxVals = procData(:, 2:end);
+% procFluxVals = procData(:, 2:end);
 iFluxVals = zeros(numCycles - 2, 10); % Max 20% 30% 40% 50% 60% 70 80 90 Full
 
 percentages = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
+
+minPTimes = zeros(numCycles - 2, 10);
+interpTimes = zeros(numCycles - 2, 10);
 
 %% Calculating Values
 
@@ -92,30 +94,47 @@ for i = 2:numCycles - 1 % iterate through cycles
     % Avg calculations at 20-100%
     minPData = [];
     for j = 1:9 % iterate through percentages
+
+        % Biexponential Calculations
         minPData =  pFitTimePressure(pFitTimePressure(:, 2) > minP(j), :); % Constrains dataset to have minimum threshold pressure
-        % fprintf("Min Data for " + percentages(j) + " with minimum pressure " + minPressures(j));
-        pStartMinPData = minPData(1, 2);
-        pEndMinPData = minPData(end, 2);
-        tStart = minPData(1, 1);
-        tEnd = minPData(end, 1);
-        dP = pStartMinPData - pEndMinPData; % pressure drop
-        dt = tEnd - tStart;
-        
-        % Calculates flux
-        flux = calcFlux(dP, dt, cellArea);
+        pStartMinPData = minPData(1, 2); % Start pressure
+        pEndMinPData = minPData(end, 2); % End Pressure
+        tStart = minPData(1, 1); % Start Time
+        tEnd = minPData(end, 1); % End Time
+        dP = pStartMinPData - pEndMinPData; % Pressure drop
+        dt = tEnd - tStart; % Time elapsed
+        flux = calcFlux(dP, dt, cellArea); % Calculates flux
 
         % Calculates Mass Capture Values
-        dPGramsCO2 = psiToGCO2(dP);
-        mc = dPGramsCO2 / cellArea;
-        
+        mc = psiToGCO2(dP) / cellArea;
+
+        % Interpolated Biexponential Calculations
+        pEndInterp = minP(j); % End Pressure
+        tEndInterp = interp1(pFitTimePressure (:, 2), pFitTimePressure (:, 1), pEndInterp); % End Time, Intepolated at min pressure
+        pStartInterp = pFitTimePressure(1, 2); % Start pressure
+        tStartInterp = pFitTimePressure(1, 1); % Start time
+        dPInterp = pStartInterp - pEndInterp; % Pressure drop
+        dtInterp = tEndInterp - tStartInterp; % Time elapsed
+        fluxInterp = calcFlux(dPInterp, dtInterp, cellArea); % Calculates flux
+
         % Records final calculations
         mcVals(i - 1, j + 1) = mc;
-        rawFluxVals(i - 1, j + 1) = flux;    
+        rawFluxVals(i - 1, j + 1) = flux;   
+        iFluxVals(i - 1, j + 1) = fluxInterp;
+
+        % Temp comparison recorded vals
+        minPTimes(i - 1, j + 1) = tEnd;
+        interpTimes(i - 1, j + 1) = tEndInterp;
+
     end
-
+    
     rawFluxVals = round(rawFluxVals, 2);
+    iFluxVals = round(iFluxVals, 2);
 
-    diffProc = 100 * (rawFluxVals - procFluxVals) ./ procFluxVals;
+    % Percent Diff Calculations
+    diffInterp = 100 * (iFluxVals - rawFluxVals) ./ rawFluxVals;
+
+    % diffProc = 100 * (rawFluxVals - procFluxVals) ./ procFluxVals;
 
 
     %{
@@ -311,8 +330,8 @@ end
     1. Import Processed Data - compare flux values. Make sure that
     difference in fluxes = 0
     2. Create a interpolated version of flux - calculate and compare values
+        a. Max Flux should not require interpolation, would remain equal
     3. Create a normalized --> interpolated version of flux
-
 
 %}
 
