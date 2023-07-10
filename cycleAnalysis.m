@@ -9,7 +9,7 @@ rawData = readmatrix(rawFileName, 'Sheet', 2); % Pulls data from 2nd sheet of ra
 
 [procFile, procPath] = uigetfile('.xlsx');
 procFileName = string(fullfile(procPath, procFile));
-procData = readmatrix(procFileName, 'Sheet', 2); % Pulls data from 2nd sheet of rawData file
+procData = readmatrix(procFileName, 'Sheet', 1); % Pulls data from 2nd sheet of rawData file
 
 % fprintf("File loaded \n")
 
@@ -89,10 +89,10 @@ for i = 2:numCycles - 1 % iterate through cycles
     pFitTimePressureDetrend = setTimePressureCurves(timeValsDetrend, pressureValsDetrend); % creates biexponential curve of detrended data
     
     % Calculates Max Flux Values
-    fluxVals(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea); % Biexponential
-    fluxValsInterp(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea); % Normalized
-    fluxValsNorm(i - 1, 1) = calculateFluxMax(timeValsNorm, pValsNorm, cellArea) * rescaleVals; % Normalized
-    fluxValsDetrend(i - 1, 1) = calculateFluxMax(timeVals, pressureValsDetrend, cellArea); % Detrended  
+    fluxVals(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea, cellVolume); % Biexponential
+    fluxValsInterp(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea, cellVolume); % Normalized
+    fluxValsNorm(i - 1, 1) = calculateFluxMax(timeValsNorm, pValsNorm, cellArea, cellVolume) * rescaleVals; % Normalized
+    fluxValsDetrend(i - 1, 1) = calculateFluxMax(timeVals, pressureValsDetrend, cellArea, cellVolume); % Detrended  
     
     % Calculates minimum pressure drops for avg flux calcs
     minP = calculateMinP(pFitTimePressure);
@@ -105,7 +105,7 @@ for i = 2:numCycles - 1 % iterate through cycles
     
     % Calculates FE Vals
     dPFit = pFitTimePressure(1, 2) - pFitTimePressure(end, 2);
-    fe = 100 * (psiToGCO2(dPFit) / mwCO2) * F / (ccCoulumbs);
+    fe = 100 * (psiToGCO2(dPFit, cellVolume) / mwCO2) * F / (ccCoulumbs);
     
     % Assign values at end of loop
     ccVals(i - 1, 1) = ccuAh;
@@ -121,13 +121,13 @@ for i = 2:numCycles - 1 % iterate through cycles
         pStart = minPData(1, 1); % Start Time
         pEnd = minPData(end, 1); % End Time
         dP = pStart - pEnd; % Pressure drop
-        mc = psiToGCO2(dP) / cellArea;
+        mc = psiToGCO2(dP, cellVolume) / cellArea;
 
         % Flux Calculations
-        flux = calculateFluxAvgs(pFitTimePressure, minP(j)); % Biexponetial
-        fluxInterp = interpolateFluxAvgs(pFitTimePressure, minP(j)); % Biexponential --> Interpolated 
-        fluxNorm = calculateFluxAvgs(pFitTimePressureNorm, minPNorm(j)); % Normalized --> Biexponential
-        fluxDetrend = calculateFluxAvgs(pFitTimePressureDetrend, minPDetrend(j)); % Detrend --> Biexponential 
+        flux = calculateFluxAvgs(pFitTimePressure, minP(j), cellVolume); % Biexponetial
+        fluxInterp = interpolateFluxAvgs(pFitTimePressure, minP(j), cellVolume); % Biexponential --> Interpolated 
+        fluxNorm = calculateFluxAvgs(pFitTimePressureNorm, minPNorm(j), cellVolume); % Normalized --> Biexponential
+        fluxDetrend = calculateFluxAvgs(pFitTimePressureDetrend, minPDetrend(j), cellVolume); % Detrend --> Biexponential 
 
         fluxNorm = fluxNorm * rescaleVals; % Rescale flux vals
 
@@ -195,13 +195,13 @@ function minP = calculateMinP(timePressureVals)
     minP = pStart - (dPFit * percentages); % Minimum pressure values for each avg flux calc
 end
 
-function gCO2 = psiToGCO2(psi) 
+function gCO2 = psiToGCO2(psi, cellVolume) 
     %{
     Converts psi to grams CO2
     Calculates using PV = NRT, then multiplies by molecular weight 
     %}
     psiToPa = 6894.76; % Pa psi-1
-    cellVolume = 5.45884579 * 1e-3; % processed data cell volume (L)
+    
     R = 8.314 * 1e3; % Gas const ,  (L * Pa)/(mol * K)
     T = 298; % Temperature, assume RT = 298K
     mwCO2 = 44; % Molecular weight of CO2, g/mol
@@ -211,7 +211,7 @@ function gCO2 = psiToGCO2(psi)
     gCO2 = molsCO2 * mwCO2;
 end
 
-function flux = pressureToFlux(dp, dt) 
+function flux = pressureToFlux(dp, dt, cellVolume) 
     %{
     Calculates flux values using change in pressure and time
     Flux = dP / (area * dt)
@@ -220,11 +220,11 @@ function flux = pressureToFlux(dp, dt)
     secToHr = 1/3600;
     cellArea = 2e-4; % Elecrode area, m^2
     dtHours = dt * secToHr; 
-    dPGramsCO2 = psiToGCO2(dp);
+    dPGramsCO2 = psiToGCO2(dp, cellVolume);
     flux = dPGramsCO2 / (cellArea * dtHours); % calculate cycle flux, gCo2 / h
 end
 
-function fluxCalc = calculateFluxAvgs(timePressureVals, minP)
+function fluxCalc = calculateFluxAvgs(timePressureVals, minP, cellVolume)
     %{
     Calculates flux by determining the pressure greater than minP
     Use time-pressure pairs to calculate flux
@@ -236,10 +236,10 @@ function fluxCalc = calculateFluxAvgs(timePressureVals, minP)
     tEnd = minPData(end, 1); % End Time
     dP = pStart - pEnd; % Pressure drop
     dt = tEnd - tStart; % Time elapsed
-    fluxCalc = pressureToFlux(dP, dt); % Calculates flux
+    fluxCalc = pressureToFlux(dP, dt, cellVolume); % Calculates flux
 end
 
-function fluxInterp = interpolateFluxAvgs(timePressureVals, minP)
+function fluxInterp = interpolateFluxAvgs(timePressureVals, minP, cellVolume)
     %{
     Calculates flux using interpolated points
     Utilize exact pressures 20 - 100% to interpolate time
@@ -251,10 +251,10 @@ function fluxInterp = interpolateFluxAvgs(timePressureVals, minP)
     tStartInterp = timePressureVals(1, 1); % Start time
     dPInterp = pStartInterp - pEndInterp; % Pressure drop
     dtInterp = tEndInterp - tStartInterp; % Time elapsed
-    fluxInterp = pressureToFlux(dPInterp, dtInterp); % Calculates flux
+    fluxInterp = pressureToFlux(dPInterp, dtInterp, cellVolume); % Calculates flux
 end
 
-function maxFlux = calculateFluxMax(timeVals, pressureVals, cellArea)
+function maxFlux = calculateFluxMax(timeVals, pressureVals, cellArea, cellVolume)
     %{
     Calculates Max flux
     Takes derivative of biexponential curve
@@ -264,7 +264,7 @@ function maxFlux = calculateFluxMax(timeVals, pressureVals, cellArea)
     secToHr = 1/3600;
     pFitCurve = fit(timeVals, pressureVals, 'exp2'); % Creates biexponential model of P vs t
     pDeriv = differentiate(pFitCurve, timeVals); % Differentiates pFitCurve with datapoints at x = timeVals
-    gDeriv = -1 * psiToGCO2(pDeriv) / cellArea / secToHr; % Convert pDeriv from psi to g CO2
+    gDeriv = -1 * psiToGCO2(pDeriv, cellVolume) / cellArea / secToHr; % Convert pDeriv from psi to g CO2
     maxFlux = max(gDeriv);
 end
 
