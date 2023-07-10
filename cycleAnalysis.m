@@ -50,47 +50,54 @@ for i = 2:numCycles - 1 % iterate through cycles
     chargeRegionData = cycData(cycData(:, 7) > 0, :); % Data in charging region, theoretical > 0, realistic > 0.0002
     chargeRegionData = chargeRegionData(chargeRegionData(:, 6) == stepIndexVals, :);
 
+    timeVals = chargeRegionData(:, 4); % Step time values, s
+    pressureVals = chargeRegionData(:, 19); % Auxilary Presure Values, psi
+    chargeVals = chargeRegionData(:, 10) * 1e6; % Charge Capacity, uAh
+
+    % Extract Detrend Cycle Data
     cycDataDetrend = detrendData(detrendData(:, 5) == i, :); % Data in cycle i
     chargeDataDetrend = cycDataDetrend(cycDataDetrend(:, 7) > 0.00002, :);
     stepIndexValsDetrend = chargeDataDetrend(5, 6);
     chargeDataDetrend = cycDataDetrend(cycDataDetrend(:, 7) > 0, :); % Data in charging region, theoretical > 0, realistic > 0.0002
     chargeDataDetrend = chargeDataDetrend(chargeDataDetrend(:, 6) == stepIndexValsDetrend, :);
     
-    timeVals = chargeRegionData(:, 4); % Step time values, s
-    pressureVals = chargeRegionData(:, 19); % Auxilary Presure Values, psi
-    chargeVals = chargeRegionData(:, 10) * 1e6; % Charge Capacity, uAh
-    
     % Calculates time-pressure values of biexponential fit for pressure curve
-    pFitTimePressure = setTimePresureCurves(timeVals, pressureVals);
+    pFitTimePressure = setTimePressureCurves(timeVals, pressureVals);
 
     % Calculate Normalized Pressure Data
     normalizingValue = min(pressureVals); % Calculates baseline pressure 
     normalizingDP = range(pressureVals); % Calculates range
-    pressureValsNorm = (pressureVals - normalizingValue); % Normalizes pressures between 0 and 1
-    pFitTimePressureNorm = setTimePresureCurves(timeVals, pressureValsNorm);
-    % TODO: Rescale final flux values - current units are 1/s, but we need to get back to
-    % originals, rescaling it may not be linear
-    % cutoff is now just a percentage
+    pValsNorm = (pressureVals - normalizingValue) / normalizingDP; % Normalizes pressures between 0 and 1
+    timeValsNorm = timeVals - timeVals(1); % Sets time to start at 0
+    pFitCurveNorm = fit(timeValsNorm, pValsNorm, 'exp2');
+
+    curveCoeff = coeffvalues(pFitCurveNorm); % extract coeffs from biexponential fit
+    aPrime = curveCoeff(1) / (curveCoeff(1) + curveCoeff(3)); % Normalizing Fitted value coeffs
+    cPrime = curveCoeff(3) / (curveCoeff(1) + curveCoeff(3)); % Normalizing Fitted value coeffs
+    eqtn = fittype('a * exp(b * x) + c * exp(d*x)'); % Defining biexpo
+    pFitCurveNorm2 = cfit(eqtn, aPrime, curveCoeff(2), cPrime, curveCoeff(4));
+    pFitCurveNormVals = pFitCurveNorm2(timeValsNorm); % Calculating Second Normalization p vals
+    pFitTimePressureNorm = createTimePressureVals(timeValsNorm, pFitCurveNormVals);
 
     % Calculate Moving Mean Centered Data
     pressureValsMMCentered = movmean(pressureVals, 3); % Calculates Moving mean pressure values
     pFitTimePressureMMC = createTimePressureVals(timeVals, pressureValsMMCentered);
-
+    rescale = mean(pressureVals(1:5)) - mean(pressureVals(end - 5:end));
     % Calculate Detrended Dada
     timeValsDetrend = chargeDataDetrend(:, 4);
     pressureValsDetrend = chargeDataDetrend(:, 19);
-    pFitTimePressureDetrend = setTimePresureCurves(timeValsDetrend, pressureValsDetrend); % creates biexponential curve of detrended data
+    pFitTimePressureDetrend = setTimePressureCurves(timeValsDetrend, pressureValsDetrend); % creates biexponential curve of detrended data
     
     % Calculates Max Flux Values
     fluxVals(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea); % Biexponential
     fluxValsInterp(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea); % Normalized
-    fluxValsNorm(i - 1, 1) = calculateFluxMax(timeVals, pressureValsNorm, cellArea); % Normalized
+    fluxValsNorm(i - 1, 1) = calculateFluxMax(timeValsNorm, pValsNorm, cellArea); % Normalized
     fluxValsDetrend(i - 1, 1) = calculateFluxMax(timeVals, pressureValsDetrend, cellArea); % Detrended
     fluxValsMMC(i - 1, 1) = calculateFluxMax(timeVals, pressureValsMMCentered, cellArea); % Moving Mean Centered
     
     % Calculates minimum pressure drops for avg flux calcs
     minP = calculateMinP(pFitTimePressure);
-    minPNorm = calculateMinP(pFitTimePressureNorm);
+    minPNorm = [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0];
     minPDetrend = calculateMinP(pFitTimePressureDetrend);
     minPMMC = calculateMinP(pFitTimePressureMMC);
 
@@ -125,18 +132,8 @@ for i = 2:numCycles - 1 % iterate through cycles
         fluxDetrend = calculateFluxAvgs(pFitTimePressureDetrend, minPDetrend(j)); % Detrend --> Biexponential 
         % fluxMMC = calculateFluxAvgs(pFitTimePressureMMC, minPMMC(j)); % MM Centered --> Biexponential 
 
+        fluxNorm = fluxNorm * rescale; % Rescale flux vals
 
-        %{ 
-        Data processing types
-        1. Exponential Fitting - standard    
-        2. Interpolation - post processing
-        3. Normalization - pre processing
-                a. Issues with magnitudes of flux - may need to scale the
-                dp or do another type of data processing on top of it
-        4. Detrending - pre processing
-        %}
-       
-        
         % Records final calculations
         mcVals(i - 1, j + 1) = mc;
         fluxVals(i - 1, j + 1) = flux;   
@@ -144,9 +141,14 @@ for i = 2:numCycles - 1 % iterate through cycles
         fluxValsNorm(i - 1, j + 1) = fluxNorm;
         fluxValsDetrend(i - 1, j + 1) = fluxDetrend;
         % fluxValsMMC(i - 1, j + 1) = fluxMMC;
-        
+      
     end
 end
+
+% Post Calculation Evaluations
+
+% rescaleVals = mwCO2 * 1/3600 / cellArea;
+fluxValsNorm = fluxValsNorm * rescaleVals;
 
 % Round flux vals to 2 decimals
 fluxVals = round(fluxVals, 2);
@@ -162,13 +164,20 @@ diffNorm = 100 * (fluxValsNorm - fluxVals) ./ fluxVals;
 diffDetrend = 100 * (fluxValsDetrend - fluxVals) ./ fluxVals;
 diffMMC = 100 * (fluxValsMMC - fluxVals) ./ fluxVals;
 
+diffInterpMax = max(diffInterp);
+diffInterpMin = min(diffInterp);
+diffNormMax = max(diffNorm);
+diffNormMin = min(diffNorm);
+diffDetrendMax = max(diffDetrend);
+diffDetrendMin = min(diffDetrend);
+
+
+
 fprintf("Script ended" + "\n");
 
 %% Extraneous Functions
 
-
-
-function timePressureVals = setTimePresureCurves(timeVals, pressureVals)
+function timePressureVals = setTimePressureCurves(timeVals, pressureVals)
     %{
     Calculate the biexpnential fitted curve, and stores values in a
     timePressure array
@@ -182,6 +191,7 @@ function timePressureVals = setTimePresureCurves(timeVals, pressureVals)
 end
 
 function timePressureVals = createTimePressureVals(timeVals, pressureVals) 
+    % Creates array of time and pressure
     timePressureVals = [];
     timePressureVals(:, 1) = timeVals; % set column 1 to time values
     timePressureVals(:, 2) = pressureVals; % sets column 2 to pressures values
@@ -233,7 +243,7 @@ function fluxCalc = calculateFluxAvgs(timePressureVals, minP)
     Calculates flux by determining the pressure greater than minP
     Use time-pressure pairs to calculate flux
     %}
-    minPData =  timePressureVals(timePressureVals(:, 2) > minP, :); % Constrains dataset to have minimum threshold pressure
+    minPData =  timePressureVals(timePressureVals(:, 2) >= minP, :); % Constrains dataset to have minimum threshold pressure
     pStart = minPData(1, 2); % Start pressure
     pEnd = minPData(end, 2); % End Pressure
     tStart = minPData(1, 1); % Start Time
@@ -259,6 +269,12 @@ function fluxInterp = interpolateFluxAvgs(timePressureVals, minP)
 end
 
 function maxFlux = calculateFluxMax(timeVals, pressureVals, cellArea)
+    %{
+    Calculates Max flux
+    Takes derivative of biexponential curve
+    Converts flux to gCo2 / (m^2 * hr)
+    Takes maximum derivative value
+    %}
     secToHr = 1/3600;
     pFitCurve = fit(timeVals, pressureVals, 'exp2'); % Creates biexponential model of P vs t
     pDeriv = differentiate(pFitCurve, timeVals); % Differentiates pFitCurve with datapoints at x = timeVals
