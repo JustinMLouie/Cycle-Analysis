@@ -7,11 +7,15 @@ clc;
 rawFileName = string(fullfile(rawPath, rawFile));
 rawData = readmatrix(rawFileName, 'Sheet', 2); % Pulls data from 2nd sheet of rawData file
 
+[procFile, procPath] = uigetfile('.xlsx');
+procFileName = string(fullfile(procPath, procFile));
+procData = readmatrix(procFileName, 'Sheet', 2); % Pulls data from 2nd sheet of rawData file
+
 % fprintf("File loaded \n")
 
 %% Set Up
 % Constants used in calculations
-cellVolume = 5.45884579 * 1e-3; % Processed Data cell volume, L
+cellVolume = procData(8, 2) * 1e-3; % Processed Data cell volume, L
 uAhToCoulumbs = 0.0036;
 cellArea = 2e-4; % Elecrode area, m^2
 mwCO2 = 44; % Molecular weight of CO2, g/mol
@@ -69,11 +73,12 @@ for i = 2:numCycles - 1 % iterate through cycles
     pValsNorm = (pressureVals - normalizingValue) / normalizingDP; % Normalizes pressures between 0 and 1
     timeValsNorm = timeVals - timeVals(1); % Sets time to start at 0
     pFitCurveNorm = fit(timeValsNorm, pValsNorm, 'exp2');
+    rescaleVals = mean(pressureVals(1:5)) - mean(pressureVals(end - 5:end));
 
     curveCoeff = coeffvalues(pFitCurveNorm); % extract coeffs from biexponential fit
     aPrime = curveCoeff(1) / (curveCoeff(1) + curveCoeff(3)); % Normalizing Fitted value coeffs
     cPrime = curveCoeff(3) / (curveCoeff(1) + curveCoeff(3)); % Normalizing Fitted value coeffs
-    eqtn = fittype('a * exp(b * x) + c * exp(d*x)'); % Defining biexpo
+    eqtn = fittype('a * exp(b * x) + c * exp(d*x)'); % Defining biexponential eqtn
     pFitCurveNorm2 = cfit(eqtn, aPrime, curveCoeff(2), cPrime, curveCoeff(4));
     pFitCurveNormVals = pFitCurveNorm2(timeValsNorm); % Calculating Second Normalization p vals
     pFitTimePressureNorm = createTimePressureVals(timeValsNorm, pFitCurveNormVals);
