@@ -2,12 +2,12 @@ clear;
 clc;
 
 %% Loading rawData file
-fprintf("Add Raw file \n")
+% fprintf("Add Raw file \n")
 [rawFile, rawPath] = uigetfile('.xlsx');
 rawFileName = string(fullfile(rawPath, rawFile));
 rawData = readmatrix(rawFileName, 'Sheet', 2); % Pulls data from 2nd sheet of rawData file
 
-fprintf("File loaded \n")
+% fprintf("File loaded \n")
 
 %% Set Up
 % Constants used in calculations
@@ -28,7 +28,6 @@ feVals = zeros(numCycles - 2, 1);
 % Max 20% 30% 40% 50% 60% 70 80 90 Full
 fluxValsInterp = zeros(numCycles - 2, 10); % Interpolated Flux Values
 fluxValsNorm = zeros(numCycles - 2, 10); % Interpolated Flux Values
-fluxValsMMC = zeros(numCycles - 2, 10); % Interpolated Moving Mean Centered Values
 fluxValsDetrend = zeros(numCycles - 2, 10); % Interpolated Moving Mean Trailing Values
 
 % Caclulate detrendData
@@ -38,7 +37,7 @@ detrendData(:, 19) = detrendPressure;
 
 %% Calculating Values
 
-fprintf("Starting calculations \n")
+% fprintf("Starting calculations \n")
 
 % Loops through each cycle, skips the incomplete cycle 1
 for i = 2:numCycles - 1 % iterate through cycles
@@ -79,10 +78,6 @@ for i = 2:numCycles - 1 % iterate through cycles
     pFitCurveNormVals = pFitCurveNorm2(timeValsNorm); % Calculating Second Normalization p vals
     pFitTimePressureNorm = createTimePressureVals(timeValsNorm, pFitCurveNormVals);
 
-    % Calculate Moving Mean Centered Data
-    pressureValsMMCentered = movmean(pressureVals, 3); % Calculates Moving mean pressure values
-    pFitTimePressureMMC = createTimePressureVals(timeVals, pressureValsMMCentered);
-    rescale = mean(pressureVals(1:5)) - mean(pressureVals(end - 5:end));
     % Calculate Detrended Dada
     timeValsDetrend = chargeDataDetrend(:, 4);
     pressureValsDetrend = chargeDataDetrend(:, 19);
@@ -91,15 +86,13 @@ for i = 2:numCycles - 1 % iterate through cycles
     % Calculates Max Flux Values
     fluxVals(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea); % Biexponential
     fluxValsInterp(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea); % Normalized
-    fluxValsNorm(i - 1, 1) = calculateFluxMax(timeValsNorm, pValsNorm, cellArea); % Normalized
-    fluxValsDetrend(i - 1, 1) = calculateFluxMax(timeVals, pressureValsDetrend, cellArea); % Detrended
-    fluxValsMMC(i - 1, 1) = calculateFluxMax(timeVals, pressureValsMMCentered, cellArea); % Moving Mean Centered
+    fluxValsNorm(i - 1, 1) = calculateFluxMax(timeValsNorm, pValsNorm, cellArea) * rescaleVals; % Normalized
+    fluxValsDetrend(i - 1, 1) = calculateFluxMax(timeVals, pressureValsDetrend, cellArea); % Detrended  
     
     % Calculates minimum pressure drops for avg flux calcs
     minP = calculateMinP(pFitTimePressure);
     minPNorm = [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0];
     minPDetrend = calculateMinP(pFitTimePressureDetrend);
-    minPMMC = calculateMinP(pFitTimePressureMMC);
 
     % Calculates CC Vals
     ccuAh = max(chargeVals); % charge capacity, uAh
@@ -130,9 +123,8 @@ for i = 2:numCycles - 1 % iterate through cycles
         fluxInterp = interpolateFluxAvgs(pFitTimePressure, minP(j)); % Biexponential --> Interpolated 
         fluxNorm = calculateFluxAvgs(pFitTimePressureNorm, minPNorm(j)); % Normalized --> Biexponential
         fluxDetrend = calculateFluxAvgs(pFitTimePressureDetrend, minPDetrend(j)); % Detrend --> Biexponential 
-        % fluxMMC = calculateFluxAvgs(pFitTimePressureMMC, minPMMC(j)); % MM Centered --> Biexponential 
 
-        fluxNorm = fluxNorm * rescale; % Rescale flux vals
+        fluxNorm = fluxNorm * rescaleVals; % Rescale flux vals
 
         % Records final calculations
         mcVals(i - 1, j + 1) = mc;
@@ -140,40 +132,29 @@ for i = 2:numCycles - 1 % iterate through cycles
         fluxValsInterp(i - 1, j + 1) = fluxInterp;
         fluxValsNorm(i - 1, j + 1) = fluxNorm;
         fluxValsDetrend(i - 1, j + 1) = fluxDetrend;
-        % fluxValsMMC(i - 1, j + 1) = fluxMMC;
       
     end
 end
 
 % Post Calculation Evaluations
 
-% rescaleVals = mwCO2 * 1/3600 / cellArea;
-fluxValsNorm = fluxValsNorm * rescaleVals;
-
 % Round flux vals to 2 decimals
 fluxVals = round(fluxVals, 2);
 fluxValsInterp = round(fluxValsInterp, 2);
 fluxValsNorm = round(fluxValsNorm, 2);
 fluxValsDetrend = round(fluxValsDetrend, 2);
-fluxValsMMC = round(fluxValsMMC, 2);
 
 % Percent Diff Calculations
 % neg diff means fluxVals is greater, fluxVals overshoots (diffInterp)
 diffInterp = 100 * (fluxValsInterp - fluxVals) ./ fluxVals;
 diffNorm = 100 * (fluxValsNorm - fluxVals) ./ fluxVals;
 diffDetrend = 100 * (fluxValsDetrend - fluxVals) ./ fluxVals;
-diffMMC = 100 * (fluxValsMMC - fluxVals) ./ fluxVals;
 
-diffInterpMax = max(diffInterp);
-diffInterpMin = min(diffInterp);
-diffNormMax = max(diffNorm);
-diffNormMin = min(diffNorm);
-diffDetrendMax = max(diffDetrend);
-diffDetrendMin = min(diffDetrend);
+diffInterpMax = max(abs(diffInterp));
+diffNormMax = max(abs(diffNorm));
+diffDetrendMax = max(abs(diffDetrend));
 
-
-
-fprintf("Script ended" + "\n");
+% fprintf("Script ended" + "\n");
 
 %% Extraneous Functions
 
