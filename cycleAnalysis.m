@@ -8,10 +8,8 @@ clc;
 cd("Raw Data") % Enter directory with all data files
 volData = readmatrix("cellvolumes.xlsx", "Sheet", 1);
 
-for n = 14:14
-
+for n = 1:20
     % Loading Raw Data File
-
     rawFileName = append('rawdata', int2str(n), '.xlsx'); % Sets the file name to be imported
     rawData = readmatrix(rawFileName, 'Sheet', 2); % Pulls data from 2nd sheet of rawData file
 
@@ -168,36 +166,36 @@ for n = 14:14
     diffDetrendMax = max(abs(diffDetrend));
 
     %% Formatting Matrices
-
-    % Add Cycle Column
-    fluxVals = [cycColumn, fluxVals];
-    fluxValsInterp = [cycColumn, fluxValsInterp];
-    fluxValsNorm = [cycColumn, fluxValsNorm];
-    fluxValsDetrend = [cycColumn, fluxValsDetrend];
-    diffInterp = [cycColumn, diffInterp];
-    diffNorm = [cycColumn, diffNorm];
-    diffDetrend = [cycColumn, diffDetrend];
-
-    % Add column headers
-    fluxVals = [columnTitles; num2cell(fluxVals)];
-    fluxValsInterp = [columnTitles; num2cell(fluxValsInterp)];
-    fluxValsNorm = [columnTitles; num2cell(fluxValsNorm)];
-    fluxValsDetrend = [columnTitles; num2cell(fluxValsDetrend)];
-    diffInterp = [columnTitles; num2cell(diffInterp)];
-    diffNorm = [columnTitles; num2cell(diffNorm)];
-    diffDetrend = [columnTitles; num2cell(diffDetrend)];
+    %
+    % % Add Cycle Column
+    % fluxVals = [cycColumn, fluxVals];
+    % fluxValsInterp = [cycColumn, fluxValsInterp];
+    % fluxValsNorm = [cycColumn, fluxValsNorm];
+    % fluxValsDetrend = [cycColumn, fluxValsDetrend];
+    % diffInterp = [cycColumn, diffInterp];
+    % diffNorm = [cycColumn, diffNorm];
+    % diffDetrend = [cycColumn, diffDetrend];
+    %
+    % % Add column headers
+    % fluxVals = [columnTitles; num2cell(fluxVals)];
+    % fluxValsInterp = [columnTitles; num2cell(fluxValsInterp)];
+    % fluxValsNorm = [columnTitles; num2cell(fluxValsNorm)];
+    % fluxValsDetrend = [columnTitles; num2cell(fluxValsDetrend)];
+    % diffInterp = [columnTitles; num2cell(diffInterp)];
+    % diffNorm = [columnTitles; num2cell(diffNorm)];
+    % diffDetrend = [columnTitles; num2cell(diffDetrend)];
 
     %% Write data to Excel file
     excelFile = append('fluxComparisons', int2str(n), '.xlsx');
 
     % Write each data array to a separate sheet
-    writecell(fluxVals, excelFile, 'Sheet', 'Flux Vals', 'Range', 'A1');
-    writecell(fluxValsInterp, excelFile, 'Sheet', 'Flux Vals Interp', 'Range', 'A1');
-    writecell(fluxValsNorm, excelFile, 'Sheet', 'Flux Vals Norm', 'Range', 'A1');
-    writecell(fluxValsDetrend, excelFile, 'Sheet', 'Flux Vals Detrend', 'Range', 'A1');
-    writecell(diffInterp, excelFile, 'Sheet', 'Diff Interp', 'Range', 'A1');
-    writecell(diffNorm, excelFile, 'Sheet', 'Diff Norm', 'Range', 'A1');
-    writecell(diffDetrend, excelFile, 'Sheet', 'Diff Detrend', 'Range', 'A1');
+    writematrix(fluxVals, excelFile, 'Sheet', 'Flux Vals', 'Range', 'A1');
+    writematrix(fluxValsInterp, excelFile, 'Sheet', 'Flux Vals Interp', 'Range', 'A1');
+    writematrix(fluxValsNorm, excelFile, 'Sheet', 'Flux Vals Norm', 'Range', 'A1');
+    writematrix(fluxValsDetrend, excelFile, 'Sheet', 'Flux Vals Detrend', 'Range', 'A1');
+    writematrix(diffInterp, excelFile, 'Sheet', 'Diff Interp', 'Range', 'A1');
+    writematrix(diffNorm, excelFile, 'Sheet', 'Diff Norm', 'Range', 'A1');
+    writematrix(diffDetrend, excelFile, 'Sheet', 'Diff Detrend', 'Range', 'A1');
 
     % fprintf("Script ended" + "\n");
 end
@@ -287,29 +285,12 @@ function fluxInterp = interpolateFluxAvgs(timePressureVals, minP, cellVolume)
     Utilize interpolated time-pressure pairs to calculate avg fluxes
     %}
     pEndInterp = minP; % End Pressure
-
-    temp = timePressureVals(timePressureVals(:, 2) >= minP, :);
-    position = size(temp);
-    span = floor(position(1) / 2);
-    if span >= 10
-        span = 10;
-    end
-
-    lowerLim = position(1) - span;
-    upperLim = position(1) + span;
-
-    if lowerLim < size(timePressureVals, 1)
-        lowerLim = 1;
-    end
-
-    if upperLim > size(timePressureVals, 1)
-        upperLim = size(timePressureVals, 1);
-    end
-
-    finalPressureVals = timePressureVals(lowerLim:upperLim, :);
-    tEndInterp = interp1(finalPressureVals(:, 2), finalPressureVals(:, 1), pEndInterp); % End Time, Intepolated at min pressure
     pStartInterp = timePressureVals(1, 2); % Start pressure
     tStartInterp = timePressureVals(1, 1); % Start time
+    [finalPressureVals, ~, ~] =...
+        unique(timePressureVals, 'rows', 'stable'); % Ensures P vs t is unique
+    tEndInterp = interp1(finalPressureVals(:, 2), ...
+        finalPressureVals(:, 1), pEndInterp); % End Time, Intepolated at min pressure
     dPInterp = pStartInterp - pEndInterp; % Pressure drop
     dtInterp = tEndInterp - tStartInterp; % Time elapsed
     fluxInterp = pressureToFlux(dPInterp, dtInterp, cellVolume); % Calculates flux
