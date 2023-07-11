@@ -8,7 +8,7 @@ clc;
 cd("Raw Data") % Enter directory with all data files
 volData = readmatrix("cellvolumes.xlsx", "Sheet", 1);
 
-for n = 1:20
+for n = 14:14
 
     % Loading Raw Data File
 
@@ -287,7 +287,27 @@ function fluxInterp = interpolateFluxAvgs(timePressureVals, minP, cellVolume)
     Utilize interpolated time-pressure pairs to calculate avg fluxes
     %}
     pEndInterp = minP; % End Pressure
-    tEndInterp = interp1(timePressureVals(:, 2), timePressureVals(:, 1), pEndInterp); % End Time, Intepolated at min pressure
+
+    temp = timePressureVals(timePressureVals(:, 2) >= minP, :);
+    position = size(temp);
+    span = floor(position(1) / 2);
+    if span >= 10
+        span = 10;
+    end
+
+    lowerLim = position(1) - span;
+    upperLim = position(1) + span;
+
+    if lowerLim < size(timePressureVals, 1)
+        lowerLim = 1;
+    end
+
+    if upperLim > size(timePressureVals, 1)
+        upperLim = size(timePressureVals, 1);
+    end
+
+    finalPressureVals = timePressureVals(lowerLim:upperLim, :);
+    tEndInterp = interp1(finalPressureVals(:, 2), finalPressureVals(:, 1), pEndInterp); % End Time, Intepolated at min pressure
     pStartInterp = timePressureVals(1, 2); % Start pressure
     tStartInterp = timePressureVals(1, 1); % Start time
     dPInterp = pStartInterp - pEndInterp; % Pressure drop
