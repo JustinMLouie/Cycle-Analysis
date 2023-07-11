@@ -3,24 +3,21 @@ clc;
 
 % import matlab.io*
 
-%% Loading rawData file
+%% Loading Cell Volume File
 
-[volFile, volPath] = uigetfile('.xlsx');
-volFileName = string(fullfile(volPath, volFile));
-volData = readmatrix(volFileName, 'Sheet', 1); % Pulls data from 2nd sheet of rawData file
+cd("Raw Data") % Enter directory with all data files
+volData = readmatrix("cellvolumes.xlsx", "Sheet", 1);
 
-for n = 1:1
+for n = 1:20
 
-    % fprintf("Add Raw file \n")
-    [rawFile, rawPath] = uigetfile('.xlsx');
-    rawFileName = string(fullfile(rawPath, rawFile));
+    % Loading Raw Data File
+
+    rawFileName = append('rawdata', int2str(n), '.xlsx'); % Sets the file name to be imported
     rawData = readmatrix(rawFileName, 'Sheet', 2); % Pulls data from 2nd sheet of rawData file
-
-    % fprintf("File loaded \n")
 
     %% Set Up
     % Constants used in calculations
-    cellVolume = volData(n + 1, 2) * 1e-3; % Processed Data cell volume, L
+    cellVolume = volData(n, 2) * 1e-3; % Processed Data cell volume, L
     uAhToCoulumbs = 0.0036;
     cellArea = 2e-4; % Elecrode area, m^2
     mwCO2 = 44; % Molecular weight of CO2, g/mol
@@ -191,7 +188,7 @@ for n = 1:1
     diffDetrend = [columnTitles; num2cell(diffDetrend)];
 
     %% Write data to Excel file
-    excelFile = append('processedFluxValues', int2str(n), '.xlsx');
+    excelFile = append('fluxComparisons', int2str(n), '.xlsx');
 
     % Write each data array to a separate sheet
     writecell(fluxVals, excelFile, 'Sheet', 'Flux Vals', 'Range', 'A1');
