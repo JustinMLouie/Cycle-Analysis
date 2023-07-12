@@ -20,7 +20,7 @@ diffAll = zeros(99, 10, 20);
 
 % Load % differences for each flux calculation
 for i = 1:20
-    if i ~= 3
+    if i ~= 3 % Dataset 3 omitted due to missing data
         rawFileName = append('Flux Comparisons/fluxComparisons', int2str(i), '.xlsx'); % Sets the file name to be imported
 
         diffInterp(:, :, i) = readmatrix(rawFileName, 'Sheet', 6); % Pulls data from 6th sheet
@@ -108,5 +108,8 @@ for i = 2:2:10 % loop through to create graphs of the 20%, 40%, 60%, 80%, and 10
     xlabel("Cycle")
     ylabel("Percent Difference")
     title("All Data Processing Flux Difference")
+
+    fileName = append("Figures/fluxComparisons", int2str(percent), ".png"); % Creates file name for figure
+    saveas(gcf,fileName); % Saves current figure 
 end
 
