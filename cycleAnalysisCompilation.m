@@ -4,29 +4,37 @@ clc;
 %{
 fluxComparisons[i].xlsx layout
 
-1. fluxVals | 2. fluxVals Interp. | 3. fluxVals Norm | 4. fluxVals Detrend 
-5. diff Interp. | 6. diff Norm | 7. diff Detrend
+1. fluxVals | 2. fluxVals Interp. | 3. fluxVals Norm 
+4. fluxVals Detrend | 5. fluxVals All | 6. diff Interp 
+7. diff Norm | 8. diff Norm | 9. diff All
 
 %}
 
 % cd("Flux Comparisons") % Enter directory with all data files
 
-diffInterp = zeros(99, 10, 5);
-diffNorm = zeros(99, 10, 5);
-diffDetrend = zeros(99, 10, 5);
+diffInterp = zeros(99, 10, 20);
+diffNorm = zeros(99, 10, 20);
+diffDetrend = zeros(99, 10, 20);
+diffAll = zeros(99, 10, 20);
 
 
 % Load % differences for each flux calculation
 for i = 1:20
-    rawFileName = append('Flux Comparisons/fluxComparisons', int2str(i), '.xlsx'); % Sets the file name to be imported
-    diffInterp(:, :, i) = readmatrix(rawFileName, 'Sheet', 5); % Pulls data from 4th sheet
-    % fprintf("Imported fluxComparisons " + i + " Interpolated Differences \n");
+    if i ~= 3
+        rawFileName = append('Flux Comparisons/fluxComparisons', int2str(i), '.xlsx'); % Sets the file name to be imported
 
-    diffNorm(:, :, i) = readmatrix(rawFileName, 'Sheet', 6); % Pulls data from 4th sheet
-    % fprintf("Imported fluxComparisons " + i + " Normalized Differences \n");
+        diffInterp(:, :, i) = readmatrix(rawFileName, 'Sheet', 6); % Pulls data from 6th sheet
+        % fprintf("Imported fluxComparisons " + i + " Interpolated Differences \n");
 
-    diffDetrend(:, :, i) = readmatrix(rawFileName, 'Sheet', 7); % Pulls data from 4th sheet
-    % fprintf("Imported fluxComparisons " + i + " Detrended Differences \n");
+        diffNorm(:, :, i) = readmatrix(rawFileName, 'Sheet', 7); % Pulls data from 7th sheet
+        % fprintf("Imported fluxComparisons " + i + " Normalized Differences \n");
+
+        diffDetrend(:, :, i) = readmatrix(rawFileName, 'Sheet', 8); % Pulls data from 8th sheet
+        % fprintf("Imported fluxComparisons " + i + " Detrended Differences \n");
+
+        diffAll(:, :, i) = readmatrix(rawFileName, 'Sheet', 9); % Pulls data from 9th sheet
+        % fprintf("Imported fluxComparisons " + i + " All Differences \n");
+    end
 end
 
 %{
@@ -54,6 +62,11 @@ detrendAvgs = mean(diffDetrend, 3); % calculate mean of each test at each cycle 
 detrendMins = min(diffDetrend, [], 3); % calculate min of each test at each cycle and flux percentage
 detrendMaxs = max(diffDetrend, [], 3); % calculate max of each test at each cycle and flux percentage
 
+% All Flux Comparisons
+allAvgs = mean(diffAll, 3); % calculate mean of each test at each cycle and flux percentage
+allMins = min(diffAll, [], 3); % calculate min of each test at each cycle and flux percentage
+allMaxs = max(diffAll, [], 3); % calculate max of each test at each cycle and flux percentage
+
 for i = 2:2:10 % loop through to create graphs of the 20%, 40%, 60%, 80%, and 100% graphs
     figure()
 
@@ -62,43 +75,38 @@ for i = 2:2:10 % loop through to create graphs of the 20%, 40%, 60%, 80%, and 10
 
     % Interpolated Diff Subplot
     subplot(2, 2, 1)
-    yLowerLimInterp = min(interpAvgs(:, i) * 1.5 - 20);
-    yUpperLimInterp = max(interpAvgs(:, i) * 1.5 + 20);
-
-
     plot(cycles, interpAvgs(:, i), 'b', 'LineWidth', 2.0); hold on;
     fill([cycles; flipud(cycles)], [interpMins(:, i); flipud(interpMaxs(:, i))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-    % ylim([yLowerLimInterp yUpperLimInterp]);
-    ylim([-50 50])
+    ylim([-20 20])
     xlabel("Cycle");
     ylabel("Percent Difference");
     title("Interpolated Flux Difference");
 
     % Normalized Diff Subplot
     subplot(2, 2, 2)
-    yLowerLimNorm = min(normAvgs(:, i) * 1.5 - 20);
-    yUpperLimNorm = max(normAvgs(:, i) * 1.5 + 20);
     plot(cycles, normAvgs(:, i), 'b', 'LineWidth', 2.0); hold on;
     fill([cycles; flipud(cycles)], [normMins(:, i); flipud(normMaxs(:, i))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-    % ylim([yLowerLimNorm yUpperLimNorm]);
-    ylim([-50 50])
+    ylim([-75 75])
     xlabel("Cycle");
     ylabel("Percent Difference");
     title("Normalized Flux Difference");
 
     % Detrended Diff Subplot
     subplot(2, 2, 3)
-    yLowerLimDetrend = min(detrendAvgs(:, i) * 1.5 - 20);
-    yUpperLimDetrend = max(detrendAvgs(:, i) * 1.5 + 20);
     plot(cycles, detrendAvgs(:, i), 'b', 'LineWidth', 2.0); hold on;
     fill([cycles; flipud(cycles)], [detrendMins(:, i); flipud(detrendMaxs(:, 10))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-    % ylim([yLowerLimDetrend yUpperLimDetrend])
-    ylim([-50 50])
+    ylim([-20 20])
     xlabel("Cycle")
     ylabel("Percent Difference")
     title("Detrended Flux Difference")
+
+    % All Diff Plot
+    subplot(2, 2, 4)
+    plot(cycles, allAvgs(:, i), 'b', 'LineWidth', 2.0); hold on;
+    fill([cycles; flipud(cycles)], [allMins(:, i); flipud(allMaxs(:, 10))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+    ylim([-20 20])
+    xlabel("Cycle")
+    ylabel("Percent Difference")
+    title("All Data Processing Flux Difference")
 end
 
-
-
-% TODO: scale the detrended to relevant region (0 - 50)
