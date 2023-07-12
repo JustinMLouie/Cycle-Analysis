@@ -32,13 +32,14 @@ for n = 1:20
     % Flux Values to Compare Against
     % Max 20% 30% 40% 50% 60% 70 80 90 Full
     fluxValsInterp = zeros(numCycles - 2, 10); % Interpolated Flux Values
-    fluxValsNorm = zeros(numCycles - 2, 10); % Interpolated Flux Values
-    fluxValsDetrend = zeros(numCycles - 2, 10); % Interpolated Moving Mean Trailing Values
+    fluxValsNorm = zeros(numCycles - 2, 10); % Normalized Flux Values
+    fluxValsDetrend = zeros(numCycles - 2, 10); % Detrended Flux Values
+    fluxValsAll = zeros(numCycles - 2, 10); % Detrended --> Normalized --> Fitted --> Interpolated Values
 
     % Caclulate detrendData
-    detrendPressure = detrend(rawData(:, 19), 10);
-    detrendData = rawData; % Create a copy of rawData
-    detrendData(:, 19) = detrendPressure;
+    detrendPressure = detrend(rawData(:, 19), 10); % Detrend the pressure values
+    detrendData = rawData; % Create a copy of rawData 
+    detrendData(:, 19) = detrendPressure; % copy the detrended pressurevalues to detrendData
 
     %% Calculating Values
 
@@ -69,36 +70,35 @@ for n = 1:20
         pFitTimePressure = setTimePressureCurves(timeVals, pressureVals);
 
         % Calculate Normalized Pressure Data
-        normalizingValue = min(pressureVals); % Calculates baseline pressure
-        normalizingDP = range(pressureVals); % Calculates range
-        pValsNorm = (pressureVals - normalizingValue) / normalizingDP; % Normalizes pressures between 0 and 1
-        timeValsNorm = timeVals - timeVals(1); % Sets time to start at 0
-        pFitCurveNorm = fit(timeValsNorm, pValsNorm, 'exp2');
-        rescaleVals = mean(pressureVals(1:5)) - mean(pressureVals(end - 5:end));
+        pFitTimePressureNorm = normalizeTimePressureVals(timeVals, pressureVals);
+        rescaleVals = mean(pressureVals(1:5)) - mean(pressureVals(end - 5:end)); 
+        timeValsNorm = pFitTimePressureNorm(:, 1);
+        pressureValsNorm = pFitTimePressureNorm(:, 2);
+        
 
-        curveCoeff = coeffvalues(pFitCurveNorm); % extract coeffs from biexponential fit
-        aPrime = curveCoeff(1) / (curveCoeff(1) + curveCoeff(3)); % Normalizing Fitted value coeffs
-        cPrime = curveCoeff(3) / (curveCoeff(1) + curveCoeff(3)); % Normalizing Fitted value coeffs
-        eqtn = fittype('a * exp(b * x) + c * exp(d*x)'); % Defining biexponential eqtn
-        pFitCurveNorm2 = cfit(eqtn, aPrime, curveCoeff(2), cPrime, curveCoeff(4));
-        pFitCurveNormVals = pFitCurveNorm2(timeValsNorm); % Calculating Second Normalization p vals
-        pFitTimePressureNorm = createTimePressureVals(timeValsNorm, pFitCurveNormVals);
-
-        % Calculate Detrended Dada
+        % Calculate Detrended Data
         timeValsDetrend = chargeDataDetrend(:, 4);
         pressureValsDetrend = chargeDataDetrend(:, 19);
         pFitTimePressureDetrend = setTimePressureCurves(timeValsDetrend, pressureValsDetrend); % creates biexponential curve of detrended data
 
+        % Calculate All Data Processing (Detrend --> Normalized --> Fitted --> Interpolated)
+        pFitTimePressureAll = normalizeTimePressureVals(timeValsDetrend, pressureValsDetrend); % Normalize + Fit the detrended data
+        rescaleValsAll = mean(pressureValsDetrend(1:5)) - mean(pressureValsDetrend(end - 5:end)); % Create value to rescale detrended data
+        timeValsAll = pFitTimePressureAll(:, 1);
+        pressureValsAll = pFitTimePressureAll(:, 2);
+
         % Calculates Max Flux Values
         fluxVals(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea, cellVolume); % Biexponential
         fluxValsInterp(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea, cellVolume); % Normalized
-        fluxValsNorm(i - 1, 1) = calculateFluxMax(timeValsNorm, pValsNorm, cellArea, cellVolume) * rescaleVals; % Normalized
+        fluxValsNorm(i - 1, 1) = calculateFluxMax(timeValsNorm, pressureValsNorm, cellArea, cellVolume) * rescaleVals; % Normalized
         fluxValsDetrend(i - 1, 1) = calculateFluxMax(timeVals, pressureValsDetrend, cellArea, cellVolume); % Detrended
+        fluxValsAll(i - 1, 1) = calculateFluxMax(timeValsAll, pressureValsAll, cellArea, cellVolume) * rescaleValsAll; % All data processing applied
 
         % Calculates minimum pressure drops for avg flux calcs
         minP = calculateMinP(pFitTimePressure);
         minPNorm = [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0];
         minPDetrend = calculateMinP(pFitTimePressureDetrend);
+        minPAll = [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, pressureValsAll(end)]; 
 
         % Calculates CC Vals
         ccuAh = max(chargeVals); % charge capacity, uAh
@@ -129,8 +129,11 @@ for n = 1:20
             fluxInterp = interpolateFluxAvgs(pFitTimePressure, minP(j), cellVolume); % Biexponential --> Interpolated
             fluxNorm = calculateFluxAvgs(pFitTimePressureNorm, minPNorm(j), cellVolume); % Normalized --> Biexponential
             fluxDetrend = calculateFluxAvgs(pFitTimePressureDetrend, minPDetrend(j), cellVolume); % Detrend --> Biexponential
+            fluxAll = interpolateFluxAvgs(pFitTimePressureAll, minPAll(j), cellVolume); % Detrend --> Normalized --> Biexponential --> Interpolated
 
+            % Rescale Normalized Flux vals
             fluxNorm = fluxNorm * rescaleVals; % Rescale flux vals
+            fluxAll = fluxAll * rescaleValsAll; % Rescale flux vals
 
             % Records final calculations
             mcVals(i - 1, j + 1) = mc;
@@ -138,6 +141,7 @@ for n = 1:20
             fluxValsInterp(i - 1, j + 1) = fluxInterp;
             fluxValsNorm(i - 1, j + 1) = fluxNorm;
             fluxValsDetrend(i - 1, j + 1) = fluxDetrend;
+            fluxValsAll(i - 1, j + 1) = fluxAll;
 
         end
     end
@@ -147,43 +151,48 @@ for n = 1:20
     cycColumn = (1:size(fluxVals)).';
     columnTitles = {'Cycle', 'Max', '20%', '30%', '40%', '50%', '60%', '70%', '80%', '90%', 'Full'};
 
-
     % Round flux vals to 2 decimals
     fluxVals = round(fluxVals, 2);
     fluxValsInterp = round(fluxValsInterp, 2);
     fluxValsNorm = round(fluxValsNorm, 2);
     fluxValsDetrend = round(fluxValsDetrend, 2);
+    fluxValsAll = round(fluxValsAll, 2);
 
     % Percent Diff Calculations
     diffInterp = round(100 * (fluxValsInterp - fluxVals) ./ fluxVals, 2);
     diffNorm = round(100 * (fluxValsNorm - fluxVals) ./ fluxVals, 2);
     diffDetrend = round(100 * (fluxValsDetrend - fluxVals) ./ fluxVals, 2);
-
-
+    diffAll = round(100 * (fluxValsAll - fluxVals) ./ fluxVals, 2);
 
     diffInterpMax = max(abs(diffInterp));
     diffNormMax = max(abs(diffNorm));
     diffDetrendMax = max(abs(diffDetrend));
+    diffAllMax = max(abs(diffAll));
 
     %% Formatting Matrices
-    %
+    % If columns and headers desired, uncomment section, change writematrix to writecell
+    
     % % Add Cycle Column
     % fluxVals = [cycColumn, fluxVals];
     % fluxValsInterp = [cycColumn, fluxValsInterp];
     % fluxValsNorm = [cycColumn, fluxValsNorm];
     % fluxValsDetrend = [cycColumn, fluxValsDetrend];
+    % fluxVals = [cycColumn, fluxValsAll];
     % diffInterp = [cycColumn, diffInterp];
     % diffNorm = [cycColumn, diffNorm];
     % diffDetrend = [cycColumn, diffDetrend];
+    % diffAll = [cycColumn, diffAll];
     %
     % % Add column headers
     % fluxVals = [columnTitles; num2cell(fluxVals)];
     % fluxValsInterp = [columnTitles; num2cell(fluxValsInterp)];
     % fluxValsNorm = [columnTitles; num2cell(fluxValsNorm)];
     % fluxValsDetrend = [columnTitles; num2cell(fluxValsDetrend)];
+    % fluxValsAll = [columnTitles; num2cell(fluxValsAll)];
     % diffInterp = [columnTitles; num2cell(diffInterp)];
     % diffNorm = [columnTitles; num2cell(diffNorm)];
     % diffDetrend = [columnTitles; num2cell(diffDetrend)];
+    % diffAll = [columnTitles; num2cell(diffAll)];
 
     %% Write data to Excel file
     excelFile = append('fluxComparisons', int2str(n), '.xlsx');
@@ -193,11 +202,13 @@ for n = 1:20
     writematrix(fluxValsInterp, excelFile, 'Sheet', 'Flux Vals Interp', 'Range', 'A1');
     writematrix(fluxValsNorm, excelFile, 'Sheet', 'Flux Vals Norm', 'Range', 'A1');
     writematrix(fluxValsDetrend, excelFile, 'Sheet', 'Flux Vals Detrend', 'Range', 'A1');
+    writematrix(diffDetrend, excelFile, 'Sheet', 'Flux Vals All', 'Range', 'A1');
     writematrix(diffInterp, excelFile, 'Sheet', 'Diff Interp', 'Range', 'A1');
     writematrix(diffNorm, excelFile, 'Sheet', 'Diff Norm', 'Range', 'A1');
     writematrix(diffDetrend, excelFile, 'Sheet', 'Diff Detrend', 'Range', 'A1');
-
-    % fprintf("Script ended" + "\n");
+    writematrix(diffDetrend, excelFile, 'Sheet', 'Diff All', 'Range', 'A1');
+    
+    fprintf("Script ended" + "\n");
 end
 
 %% Extraneous Functions
@@ -220,6 +231,31 @@ function timePressureVals = createTimePressureVals(timeVals, pressureVals)
     timePressureVals = [];
     timePressureVals(:, 1) = timeVals; % set column 1 to time values
     timePressureVals(:, 2) = pressureVals; % sets column 2 to pressures values
+end
+
+function normalizedTPVals = normalizeTimePressureVals(timeVals, pressureVals) 
+    %{
+    Calculate Normalized Pressure Values
+    First Normalization: Normalized = (pressure - min) / dP
+    Second Normalization: 
+        a' = a/(a + c)
+        c' = c/(a + c) 
+        P = a' * exp(b * t) + c' * exp(d*t)
+
+    %}
+    normalizingValue = min(pressureVals); % Calculates baseline pressure
+    normalizingDP = range(pressureVals); % Calculates range
+    pressureValsNorm = (pressureVals - normalizingValue) / normalizingDP; % Normalizes pressures between 0 and 1
+    timeValsNorm = timeVals - timeVals(1); % Sets time to start at 0
+    pFitCurveNorm = fit(timeValsNorm, pressureValsNorm, 'exp2');
+
+    curveCoeff = coeffvalues(pFitCurveNorm); % extract coeffs from biexponential fit
+    aPrime = curveCoeff(1) / (curveCoeff(1) + curveCoeff(3)); % Normalizing Fitted value coeffs
+    cPrime = curveCoeff(3) / (curveCoeff(1) + curveCoeff(3)); % Normalizing Fitted value coeffs
+    eqtn = fittype('a * exp(b * x) + c * exp(d*x)'); % Defining biexponential eqtn
+    pFitCurveNorm2 = cfit(eqtn, aPrime, curveCoeff(2), cPrime, curveCoeff(4));
+    pFitCurveNormVals = pFitCurveNorm2(timeValsNorm); % Calculating Second Normalization p vals
+    normalizedTPVals = createTimePressureVals(timeValsNorm, pFitCurveNormVals);
 end
 
 function minP = calculateMinP(timePressureVals)
