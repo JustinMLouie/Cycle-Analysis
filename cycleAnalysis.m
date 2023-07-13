@@ -41,6 +41,20 @@ for n = 1:20
     detrendData = rawData; % Create a copy of rawData 
     detrendData(:, 19) = detrendPressure; % copy the detrended pressurevalues to detrendData
 
+    % Plots p vs time for entire data sets
+    % figure()
+    % subplot(2,1,1);
+    % plot(rawData(:, 3), rawData(:, 19)); hold on;
+    % xlabel("Test Time (s)")
+    % ylabel("Pressure (gCO2)")
+    % title("Transducer Pressure Values")
+    % 
+    % subplot(2,1,2);
+    % plot(detrendData(:, 3), detrendData(:, 19)); hold on;
+    % xlabel("Test Time (s)")
+    % ylabel("Pressure (gCO2)")
+    % title("Detrended Pressure Values")
+
     %% Calculating Values
 
     % fprintf("Starting calculations \n")
@@ -75,7 +89,6 @@ for n = 1:20
         timeValsNorm = pFitTimePressureNorm(:, 1);
         pressureValsNorm = pFitTimePressureNorm(:, 2);
         
-
         % Calculate Detrended Data
         timeValsDetrend = chargeDataDetrend(:, 4);
         pressureValsDetrend = chargeDataDetrend(:, 19);
@@ -97,8 +110,10 @@ for n = 1:20
         % Calculates minimum pressure drops for avg flux calcs
         minP = calculateMinP(pFitTimePressure);
         minPNorm = [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0];
+        % minPNorm = calculateMinP(pFitTimePressureNorm);
         minPDetrend = calculateMinP(pFitTimePressureDetrend);
         minPAll = [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, pressureValsAll(end)]; 
+        % minPAll = calculateMinP(pFitTimePressureAll);
 
         % Calculates CC Vals
         ccuAh = max(chargeVals); % charge capacity, uAh
@@ -116,6 +131,21 @@ for n = 1:20
         % Avg calculations at 20-100%
         minPData = [];
         for j = 1:9 % iterate through percentages
+
+            % Graph Cycle 80
+            % if (i == 80) 
+            %     if (j == 1)
+            %     figure();
+            %     plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2),  'b', 'LineWidth', 1.0); hold on;
+            %     scatter(pFitTimePressure(:, 1), pFitTimePressure(:, 2),  'b', 'LineWidth', 2.0);
+            %     xlim([0 10]);
+            %     yline(minP(j), 'k', 'LineWidth', 2.0);
+            %     xlabel("Step Time")
+            %     ylabel("Pressure (gCO2) ")
+            %     title("rawdata3 Cycle 80")
+            %     legend("", "Transducer Pressure Measurements", "20% Flux");
+            %     end
+            % end
 
             % Calculates Mass Capture Values - not relevant to flux calcs
             minPData =  pFitTimePressure(pFitTimePressure(:, 2) > minP(j), :);
@@ -169,6 +199,23 @@ for n = 1:20
     diffDetrendMax = max(abs(diffDetrend));
     diffAllMax = max(abs(diffAll));
 
+    figure()
+    plotName = append("rawdata", int2str(n));
+    sgtitle(plotName); 
+    subplot(2,1,1);
+    plot(cycColumn, fluxVals(:, 10), 'b', 'LineWidth', 1.0); hold on;
+    ylim([0 3.5])
+    xlabel("Cycle")
+    ylabel("Flux (gCO2 / (m^2 * h))")
+    title("Flux Values")
+
+    subplot(2,1,2)
+    plot(cycColumn, fluxValsDetrend(:, 10), 'b', 'LineWidth', 1.0); hold on;
+    ylim([0 3.5])
+    xlabel("Cycle")
+    ylabel("Flux (gCO2 / (m^2 * h))")
+    title("Detrended Flux Values")
+
     %% Formatting Matrices
     % If columns and headers desired, uncomment section, change writematrix to writecell
     
@@ -198,17 +245,17 @@ for n = 1:20
     excelFile = append('fluxComparisons', int2str(n), '.xlsx');
 
     % Write each data array to a separate sheet
-    writematrix(fluxVals, excelFile, 'Sheet', 'Flux Vals', 'Range', 'A1');
-    writematrix(fluxValsInterp, excelFile, 'Sheet', 'Flux Vals Interp', 'Range', 'A1');
-    writematrix(fluxValsNorm, excelFile, 'Sheet', 'Flux Vals Norm', 'Range', 'A1');
-    writematrix(fluxValsDetrend, excelFile, 'Sheet', 'Flux Vals Detrend', 'Range', 'A1');
-    writematrix(diffDetrend, excelFile, 'Sheet', 'Flux Vals All', 'Range', 'A1');
-    writematrix(diffInterp, excelFile, 'Sheet', 'Diff Interp', 'Range', 'A1');
-    writematrix(diffNorm, excelFile, 'Sheet', 'Diff Norm', 'Range', 'A1');
-    writematrix(diffDetrend, excelFile, 'Sheet', 'Diff Detrend', 'Range', 'A1');
-    writematrix(diffDetrend, excelFile, 'Sheet', 'Diff All', 'Range', 'A1');
-    
-    fprintf("Script ended" + "\n");
+    % writematrix(fluxVals, excelFile, 'Sheet', 'Flux Vals', 'Range', 'A1');
+    % writematrix(fluxValsInterp, excelFile, 'Sheet', 'Flux Vals Interp', 'Range', 'A1');
+    % writematrix(fluxValsNorm, excelFile, 'Sheet', 'Flux Vals Norm', 'Range', 'A1');
+    % writematrix(fluxValsDetrend, excelFile, 'Sheet', 'Flux Vals Detrend', 'Range', 'A1');
+    % writematrix(diffDetrend, excelFile, 'Sheet', 'Flux Vals All', 'Range', 'A1');
+    % writematrix(diffInterp, excelFile, 'Sheet', 'Diff Interp', 'Range', 'A1');
+    % writematrix(diffNorm, excelFile, 'Sheet', 'Diff Norm', 'Range', 'A1');
+    % writematrix(diffDetrend, excelFile, 'Sheet', 'Diff Detrend', 'Range', 'A1');
+    % writematrix(diffDetrend, excelFile, 'Sheet', 'Diff All', 'Range', 'A1');
+    % 
+    fprintf("rawdata" + n + " ended" + "\n");
 end
 
 %% Extraneous Functions
@@ -241,13 +288,14 @@ function normalizedTPVals = normalizeTimePressureVals(timeVals, pressureVals)
         a' = a/(a + c)
         c' = c/(a + c) 
         P = a' * exp(b * t) + c' * exp(d*t)
-
     %}
     normalizingValue = min(pressureVals); % Calculates baseline pressure
     normalizingDP = range(pressureVals); % Calculates range
     pressureValsNorm = (pressureVals - normalizingValue) / normalizingDP; % Normalizes pressures between 0 and 1
     timeValsNorm = timeVals - timeVals(1); % Sets time to start at 0
-    pFitCurveNorm = fit(timeValsNorm, pressureValsNorm, 'exp2');
+    pFitCurveNorm = fit(timeValsNorm, pressureValsNorm, 'exp2'); % First Normalization
+    % pFitEvalNorm = pFitCurveNorm(timeValsNorm); % TEMP: Only used to evaluate single normalization
+    % normalizedTPVals = createTimePressureVals(timeValsNorm, pFitEvalNorm); % TEMP: Only used to evaluate single normalization
 
     curveCoeff = coeffvalues(pFitCurveNorm); % extract coeffs from biexponential fit
     aPrime = curveCoeff(1) / (curveCoeff(1) + curveCoeff(3)); % Normalizing Fitted value coeffs
@@ -304,7 +352,10 @@ function fluxCalc = calculateFluxAvgs(timePressureVals, minP, cellVolume)
     Calculates flux by determining the pressure greater than minP
     Use time-pressure pairs to calculate flux
     %}
-    minPData =  timePressureVals(timePressureVals(:, 2) >= minP, :); % Constrains dataset to have minimum threshold pressure
+    % Constrains dataset to have minimum threshold pressure, subtract
+    % 0.00001 to prevent rounding issues with flux
+    minPData =  timePressureVals(timePressureVals(:, 2) >= (minP - 0.00001), :); 
+    % minPData = timePressureVals;
     pStart = minPData(1, 2); % Start pressure
     pEnd = minPData(end, 2); % End Pressure
     tStart = minPData(1, 1); % Start Time
