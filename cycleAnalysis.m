@@ -8,7 +8,9 @@ clc;
 cd("Raw Data") % Enter directory with all data files
 volData = readmatrix("cellvolumes.xlsx", "Sheet", 1);
 
-for n = 1:20
+for n = 16:16
+
+
     % Loading Raw Data File
     rawFileName = append('rawdata', int2str(n), '.xlsx'); % Sets the file name to be imported
     rawData = readmatrix(rawFileName, 'Sheet', 2); % Pulls data from 2nd sheet of rawData file
@@ -58,6 +60,7 @@ for n = 1:20
     fprintf("Starting calculations \n")
 
     % Loops through each cycle, skips the incomplete cycle 1
+    % figure()
     for i = 2:numCycles - 1 % iterate through cycles
 
         % Extracts cycle data
@@ -119,6 +122,54 @@ for n = 1:20
         minPDetrend = calculateMinP(pFitTimePressureDetrend);
         minPAll = [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, pressureValsAll(end)]; 
 
+        %{
+
+        rawdata1 cycles to save:
+        10, 20, 41, 53, 64, 100
+
+        rawdata6 cycles to save: 
+        6, 10, 38, 47, 86, 96
+
+        rawdata11 cycles to save:
+        2, 16, 29, 41, 60, 85
+
+        rawdata16 cycles to save:
+        7, 23, 45, 57, 70, 86
+
+        %}
+
+        % subplot(10, 10, i)
+        % plot(timeVals, pressureVals); % raw data
+        % hold on;
+        % plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2)); % fitted data
+        % yline(minP(1)) % 20%
+        % yline(minP(2)) % 30%
+        % yline(minP(3)) % 40%
+        % yline(minP(4)) % 50%
+        % yline(minP(5)) % 60%
+        % yline(minP(6)) % 70%
+        % yline(minP(7)) % 80%
+
+        if i == 7 || i == 23 || i == 45 || i == 57 || i == 70 || i == 86
+
+            dataset = append("rawdata", int2str(n), " Cycle ", int2str(i));
+            figure()
+            plot(timeVals, pressureVals); % raw data
+            hold on;
+            plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2)); % fitted data
+            yline(minP(1)) % 20%
+            yline(minP(2)) % 30%
+            yline(minP(3)) % 40%
+            yline(minP(4)) % 50%
+            yline(minP(5)) % 60%
+            yline(minP(6)) % 70%
+            yline(minP(7)) % 80%
+            title(dataset);
+            legend("Transducer Data", "Fitted Data", "20%", "30%", "40%","50%","60%", "70%", "80%")
+            fileName = append(dataset, ".png");
+            saveas(gcf,fileName); % Saves current figure
+        end
+
         % Calculates CC Vals
         ccuAh = max(chargeVals); % charge capacity, uAh
         ccCoulumbs = ccuAh * uAhToCoulumbs; % convert cc to coulumbs
@@ -166,7 +217,7 @@ for n = 1:20
         end
     end
 
-    %% Post Calculation Evaluations
+    % Post Calculation Evaluations
 
     cycColumn = (1:size(fluxVals)).';
     columnTitles = {'Cycle', 'Max', '20%', '30%', '40%', '50%', '60%', '70%', '80%', '90%', 'Full'};
@@ -190,54 +241,29 @@ for n = 1:20
 
     fprintf("rawdata" + n + " ended" + "\n");
 
-    %% Formatting Matrices
-    % If columns and headers desired, uncomment section, change writematrix to writecell
-    
-    % % Add Cycle Column
-    % fluxVals = [cycColumn, fluxVals];
-    % fluxValsInterp = [cycColumn, fluxValsInterp];
-    % fluxValsNorm = [cycColumn, fluxValsNorm];
-    % fluxValsDetrend = [cycColumn, fluxValsDetrend];
-    % fluxVals = [cycColumn, fluxValsAll];
-    % diffInterp = [cycColumn, diffInterp];
-    % diffNorm = [cycColumn, diffNorm];
-    % diffDetrend = [cycColumn, diffDetrend];
-    % diffAll = [cycColumn, diffAll];
-    %
-    % % Add column headers
-    % fluxVals = [columnTitles; num2cell(fluxVals)];
-    % fluxValsInterp = [columnTitles; num2cell(fluxValsInterp)];
-    % fluxValsNorm = [columnTitles; num2cell(fluxValsNorm)];
-    % fluxValsDetrend = [columnTitles; num2cell(fluxValsDetrend)];
-    % fluxValsAll = [columnTitles; num2cell(fluxValsAll)];
-    % diffInterp = [columnTitles; num2cell(diffInterp)];
-    % diffNorm = [columnTitles; num2cell(diffNorm)];
-    % diffDetrend = [columnTitles; num2cell(diffDetrend)];
-    % diffAll = [columnTitles; num2cell(diffAll)];
-
-    %% Write data to Excel file
-    excelFile = append('fluxComparisons', int2str(n), '.xlsx');
-
-    % Write each data array to a separate sheet
-    writematrix(fluxVals, excelFile, 'Sheet', 'Flux Vals', 'Range', 'A1'); % Sheet 1
-    writematrix(fluxValsInterp, excelFile, 'Sheet', 'Flux Vals Interp', 'Range', 'A1'); % Sheet 2
-    writematrix(fluxValsNorm, excelFile, 'Sheet', 'Flux Vals Norm', 'Range', 'A1'); % Sheet 3
-    writematrix(fluxValsDetrend, excelFile, 'Sheet', 'Flux Vals Detrend', 'Range', 'A1'); % Sheet 4
-    writematrix(fluxValsAll, excelFile, 'Sheet', 'Flux Vals All', 'Range', 'A1'); % Sheet 5
-    
-    writematrix(dPValsControl, excelFile, 'Sheet', 'dP Vals Control', 'Range', 'A1'); % Sheet 6
-    writematrix(dPValsDetrend, excelFile, 'Sheet', 'dP Vals Detrend', 'Range', 'A1'); % Sheet 7
-    writematrix(dPValsNorm, excelFile, 'Sheet', 'dP Vals Norm', 'Range', 'A1'); % Sheet 8
-    writematrix(dPValsAll, excelFile, 'Sheet', 'dP Vals All', 'Range', 'A1'); % Sheet 9
-
-    writematrix(diffInterp, excelFile, 'Sheet', 'Diff Interp', 'Range', 'A1'); % Sheet 10
-    writematrix(diffNorm, excelFile, 'Sheet', 'Diff Norm', 'Range', 'A1'); % Sheet 11
-    writematrix(diffDetrend, excelFile, 'Sheet', 'Diff Detrend', 'Range', 'A1'); % Sheet 12
-    writematrix(diffAll, excelFile, 'Sheet', 'diff All', 'Range', 'A1'); % Sheet 13
-
-    writematrix(diffDPNorm, excelFile, 'Sheet', 'Diff dP Norm', 'Range', 'A1'); % Sheet 14
-    writematrix(diffDPDetrend, excelFile, 'Sheet', 'Diff dP Detrend', 'Range', 'A1'); % Sheet 15
-    writematrix(diffDPAll, excelFile, 'Sheet', 'Diff dP All', 'Range', 'A1'); % Sheet 16
+    % %% Write data to Excel file
+    % excelFile = append('fluxComparisons', int2str(n), '.xlsx');
+    % 
+    % % Write each data array to a separate sheet
+    % writematrix(fluxVals, excelFile, 'Sheet', 'Flux Vals', 'Range', 'A1'); % Sheet 1
+    % writematrix(fluxValsInterp, excelFile, 'Sheet', 'Flux Vals Interp', 'Range', 'A1'); % Sheet 2
+    % writematrix(fluxValsNorm, excelFile, 'Sheet', 'Flux Vals Norm', 'Range', 'A1'); % Sheet 3
+    % writematrix(fluxValsDetrend, excelFile, 'Sheet', 'Flux Vals Detrend', 'Range', 'A1'); % Sheet 4
+    % writematrix(fluxValsAll, excelFile, 'Sheet', 'Flux Vals All', 'Range', 'A1'); % Sheet 5
+    % 
+    % writematrix(dPValsControl, excelFile, 'Sheet', 'dP Vals Control', 'Range', 'A1'); % Sheet 6
+    % writematrix(dPValsDetrend, excelFile, 'Sheet', 'dP Vals Detrend', 'Range', 'A1'); % Sheet 7
+    % writematrix(dPValsNorm, excelFile, 'Sheet', 'dP Vals Norm', 'Range', 'A1'); % Sheet 8
+    % writematrix(dPValsAll, excelFile, 'Sheet', 'dP Vals All', 'Range', 'A1'); % Sheet 9
+    % 
+    % writematrix(diffInterp, excelFile, 'Sheet', 'Diff Interp', 'Range', 'A1'); % Sheet 10
+    % writematrix(diffNorm, excelFile, 'Sheet', 'Diff Norm', 'Range', 'A1'); % Sheet 11
+    % writematrix(diffDetrend, excelFile, 'Sheet', 'Diff Detrend', 'Range', 'A1'); % Sheet 12
+    % writematrix(diffAll, excelFile, 'Sheet', 'diff All', 'Range', 'A1'); % Sheet 13
+    % 
+    % writematrix(diffDPNorm, excelFile, 'Sheet', 'Diff dP Norm', 'Range', 'A1'); % Sheet 14
+    % writematrix(diffDPDetrend, excelFile, 'Sheet', 'Diff dP Detrend', 'Range', 'A1'); % Sheet 15
+    % writematrix(diffDPAll, excelFile, 'Sheet', 'Diff dP All', 'Range', 'A1'); % Sheet 16
 
 end
 
