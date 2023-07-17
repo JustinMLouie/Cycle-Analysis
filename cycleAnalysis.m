@@ -8,7 +8,7 @@ clc;
 cd("Raw Data") % Enter directory with all data files
 volData = readmatrix("cellvolumes.xlsx", "Sheet", 1);
 
-for n = 16:16
+for n = 1:20
 
 
     % Loading Raw Data File
@@ -33,10 +33,15 @@ for n = 16:16
 
     % Flux Values to Compare Against
     % Max 20% 30% 40% 50% 60% 70 80 90 Full
-    fluxValsInterp = zeros(numCycles - 2, 10); % Interpolated Flux Values
-    fluxValsNorm = zeros(numCycles - 2, 10); % Normalized Flux Values
-    fluxValsDetrend = zeros(numCycles - 2, 10); % Detrended Flux Values
+    fluxValsInterp = zeros(numCycles - 2, 10); % Fitted --> Interpolated Flux Values
+    fluxValsNorm = zeros(numCycles - 2, 10); % Normalized --> Fitted --> Flux Values
+    fluxValsDetrend = zeros(numCycles - 2, 10); % Detrended --> Fitted --> Flux Values
     fluxValsAll = zeros(numCycles - 2, 10); % Detrended --> Normalized --> Fitted --> Interpolated Values
+
+    fluxValsNoFit = zeros(numCycles - 2, 10); % Unfitted --> Calc Flux Vals
+    fluxValsInterpNoFit = zeros(numCycles - 2, 10); % Unfitted --> Interp Flux Vals
+    fluxValsDetrendNoFit = zeros(numCycles - 2, 10); % Detrend --> Unfitted --> Calc Flux Vals
+    fluxValsAllNoFit = zeros(numCycles - 2, 10); % Detrend --> Unfitted --> Interp Flux Vals
 
     % DP Vals
     dPValsControl = zeros(numCycles - 2, 1);
@@ -60,7 +65,6 @@ for n = 16:16
     fprintf("Starting calculations \n")
 
     % Loops through each cycle, skips the incomplete cycle 1
-    % figure()
     for i = 2:numCycles - 1 % iterate through cycles
 
         % Extracts cycle data
@@ -80,10 +84,9 @@ for n = 16:16
         stepIndexValsDetrend = chargeDataDetrend(5, 6);
         chargeDataDetrend = cycDataDetrend(cycDataDetrend(:, 7) > 0, :); % Data in charging region, theoretical > 0, realistic > 0.0002
         chargeDataDetrend = chargeDataDetrend(chargeDataDetrend(:, 6) == stepIndexValsDetrend, :);
-        
 
         % Calculates time-pressure values of biexponential fit for pressure curve
-        pFitTimePressure = setTimePressureCurves(timeVals, pressureVals);
+        pFitTimePressure = createTimePressureCurves(timeVals, pressureVals);
 
         % Calculate Normalized Pressure Data
         [pFitTimePressureNorm, aPrimeNorm, cPrimeNorm] = normalizeTimePressureVals(timeVals, pressureVals);
@@ -97,7 +100,7 @@ for n = 16:16
         % Calculate Detrended Data
         timeValsDetrend = chargeDataDetrend(:, 4);
         pressureValsDetrend = chargeDataDetrend(:, 19);
-        pFitTimePressureDetrend = setTimePressureCurves(timeValsDetrend, pressureValsDetrend); % creates biexponential curve of detrended data
+        pFitTimePressureDetrend = createTimePressureCurves(timeValsDetrend, pressureValsDetrend); % creates biexponential curve of detrended data
         dPValsDetrend(i - 1) = pFitTimePressureDetrend(1, 2) - pFitTimePressureDetrend(end, 2);
 
         % Calculate All Data Processing (Detrend --> Normalized --> Fitted --> Interpolated)
@@ -109,12 +112,19 @@ for n = 16:16
         timeValsAll = pFitTimePressureAll(:, 1);
         pressureValsAll = pFitTimePressureAll(:, 2);
 
+        % Create non-fitted time-pressure value arrays
+        pressureTime = createTimePressureVals(timeVals, pressureVals);
+        pressureTimeDetrend = createTimePressureVals(timeValsDetrend, pressureValsDetrend);
+      
         % Calculates Max Flux Values
         fluxVals(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea, cellVolume); % Biexponential
         fluxValsInterp(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea, cellVolume); % Normalized
         fluxValsNorm(i - 1, 1) = calculateFluxMax(timeValsNorm, pressureValsNorm, cellArea, cellVolume) * rescaleVals; % Normalized
         fluxValsDetrend(i - 1, 1) = calculateFluxMax(timeVals, pressureValsDetrend, cellArea, cellVolume); % Detrended
         fluxValsAll(i - 1, 1) = calculateFluxMax(timeValsAll, pressureValsAll, cellArea, cellVolume) * rescaleValsAll; % All data processing applied
+        
+        %%%%% Did not calculate max flux for non-fitted, cannot calc
+        %%%%% without curve, no use doing so
 
         % Calculates minimum pressure drops for avg flux calcs
         minP = calculateMinP(pFitTimePressure);
@@ -122,53 +132,8 @@ for n = 16:16
         minPDetrend = calculateMinP(pFitTimePressureDetrend);
         minPAll = [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, pressureValsAll(end)]; 
 
-        %{
-
-        rawdata1 cycles to save:
-        10, 20, 41, 53, 64, 100
-
-        rawdata6 cycles to save: 
-        6, 10, 38, 47, 86, 96
-
-        rawdata11 cycles to save:
-        2, 16, 29, 41, 60, 85
-
-        rawdata16 cycles to save:
-        7, 23, 45, 57, 70, 86
-
-        %}
-
-        % subplot(10, 10, i)
-        % plot(timeVals, pressureVals); % raw data
-        % hold on;
-        % plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2)); % fitted data
-        % yline(minP(1)) % 20%
-        % yline(minP(2)) % 30%
-        % yline(minP(3)) % 40%
-        % yline(minP(4)) % 50%
-        % yline(minP(5)) % 60%
-        % yline(minP(6)) % 70%
-        % yline(minP(7)) % 80%
-
-        if i == 7 || i == 23 || i == 45 || i == 57 || i == 70 || i == 86
-
-            dataset = append("rawdata", int2str(n), " Cycle ", int2str(i));
-            figure()
-            plot(timeVals, pressureVals); % raw data
-            hold on;
-            plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2)); % fitted data
-            yline(minP(1)) % 20%
-            yline(minP(2)) % 30%
-            yline(minP(3)) % 40%
-            yline(minP(4)) % 50%
-            yline(minP(5)) % 60%
-            yline(minP(6)) % 70%
-            yline(minP(7)) % 80%
-            title(dataset);
-            legend("Transducer Data", "Fitted Data", "20%", "30%", "40%","50%","60%", "70%", "80%")
-            fileName = append(dataset, ".png");
-            saveas(gcf,fileName); % Saves current figure
-        end
+        minPNoFit = calculateMinP(pressureTime);
+        minPDetrendNoFit = calculateMinP(pressureTimeDetrend);
 
         % Calculates CC Vals
         ccuAh = max(chargeVals); % charge capacity, uAh
@@ -202,6 +167,11 @@ for n = 16:16
             fluxDetrend = calculateFluxAvgs(pFitTimePressureDetrend, minPDetrend(j), cellVolume); % Detrend --> Biexponential
             fluxAll = interpolateFluxAvgs(pFitTimePressureAll, minPAll(j), cellVolume); % Detrend --> Normalized --> Biexponential --> Interpolated
 
+            fluxNoFit = calculateFluxAvgs(pressureTime, minPNoFit(j), cellVolume); % No fit --> calc flux
+            fluxInterpNoFit = interpolateFluxAvgs(pressureTime, minPNoFit(j), cellVolume); % No fit --> interp flux
+            fluxDetrendNoFit = calculateFluxAvgs(pressureTimeDetrend, minPDetrendNoFit(j), cellVolume); % Detrend --> no fit --> calc flux
+            fluxAllNoFit = interpolateFluxAvgs(pressureTimeDetrend, minPDetrendNoFit(j), cellVolume); % Detrend --> no fit --> interp flux
+
             % Rescale Normalized Flux vals
             fluxNorm = fluxNorm * rescaleVals; % Rescale flux vals
             fluxAll = fluxAll * rescaleValsAll; % Rescale flux vals
@@ -213,6 +183,11 @@ for n = 16:16
             fluxValsNorm(i - 1, j + 1) = fluxNorm;
             fluxValsDetrend(i - 1, j + 1) = fluxDetrend;
             fluxValsAll(i - 1, j + 1) = fluxAll;
+
+            fluxValsNoFit(i - 1, j + 1) = fluxNoFit;
+            fluxValsInterpNoFit(i - 1, j + 1) = fluxInterpNoFit;
+            fluxValsDetrendNoFit(i - 1, j + 1) = fluxDetrendNoFit;
+            fluxValsAllNoFit(i - 1, j + 1) = fluxAllNoFit;
 
         end
     end
@@ -229,11 +204,21 @@ for n = 16:16
     fluxValsDetrend = round(fluxValsDetrend, 2);
     fluxValsAll = round(fluxValsAll, 2);
 
+    fluxValsNoFit = round(fluxValsNoFit, 2);
+    fluxValsInterpNoFit = round(fluxValsInterpNoFit, 2);
+    fluxValsDetrendNoFit = round(fluxValsDetrendNoFit, 2);
+    fluxValsAllNoFit = round(fluxValsAllNoFit, 2);
+
     % Percent Diff Calculations
     diffInterp = round(100 * (fluxValsInterp - fluxVals) ./ fluxVals, 2);
     diffNorm = round(100 * (fluxValsNorm - fluxVals) ./ fluxVals, 2);
     diffDetrend = round(100 * (fluxValsDetrend - fluxVals) ./ fluxVals, 2);
     diffAll = round(100 * (fluxValsAll - fluxVals) ./ fluxVals, 2);
+
+    diffNoFit = round(100 * (fluxValsNoFit - fluxVals) ./ fluxVals, 2);
+    diffInterpNoFit = round(100 * (fluxValsInterpNoFit - fluxVals) ./ fluxVals, 2);
+    diffDetrendNoFit = round(100 * (fluxValsDetrendNoFit - fluxVals) ./ fluxVals, 2);
+    diffAllNoFit = round(100 * (fluxValsAllNoFit - fluxVals) ./ fluxVals, 2);
     
     diffDPNorm = round(100 * (dPValsNorm - dPValsControl) ./ dPValsControl, 2);
     diffDPDetrend = round(100 * (dPValsDetrend - dPValsControl) ./ dPValsControl, 2);
@@ -241,26 +226,36 @@ for n = 16:16
 
     fprintf("rawdata" + n + " ended" + "\n");
 
-    % %% Write data to Excel file
-    % excelFile = append('fluxComparisons', int2str(n), '.xlsx');
-    % 
-    % % Write each data array to a separate sheet
-    % writematrix(fluxVals, excelFile, 'Sheet', 'Flux Vals', 'Range', 'A1'); % Sheet 1
-    % writematrix(fluxValsInterp, excelFile, 'Sheet', 'Flux Vals Interp', 'Range', 'A1'); % Sheet 2
-    % writematrix(fluxValsNorm, excelFile, 'Sheet', 'Flux Vals Norm', 'Range', 'A1'); % Sheet 3
-    % writematrix(fluxValsDetrend, excelFile, 'Sheet', 'Flux Vals Detrend', 'Range', 'A1'); % Sheet 4
-    % writematrix(fluxValsAll, excelFile, 'Sheet', 'Flux Vals All', 'Range', 'A1'); % Sheet 5
-    % 
+    %% Write data to Excel file
+    excelFile = append('fluxComparisons', int2str(n), '.xlsx');
+
+    % Write each data array to a separate sheet
+    writematrix(fluxVals, excelFile, 'Sheet', 'Flux Vals (Control)', 'Range', 'A1'); % Sheet 1
+    writematrix(fluxValsInterp, excelFile, 'Sheet', 'Flux Vals Interp', 'Range', 'A1'); % Sheet 2
+    writematrix(fluxValsNorm, excelFile, 'Sheet', 'Flux Vals Norm', 'Range', 'A1'); % Sheet 3
+    writematrix(fluxValsDetrend, excelFile, 'Sheet', 'Flux Vals Detrend', 'Range', 'A1'); % Sheet 4
+    writematrix(fluxValsAll, excelFile, 'Sheet', 'Flux Vals All', 'Range', 'A1'); % Sheet 5
+
+    writematrix(fluxValsNoFit, excelFile, 'Sheet', 'Flux Vals No Fit', 'Range', 'A1'); % Sheet 6
+    writematrix(fluxValsInterpNoFit, excelFile, 'Sheet', 'Flux Vals Interp No Fit', 'Range', 'A1'); % Sheet 7
+    writematrix(fluxValsDetrendNoFit, excelFile, 'Sheet', 'Flux Vals Detrend No Fit', 'Range', 'A1'); % Sheet 8
+    writematrix(fluxValsAllNoFit, excelFile, 'Sheet', 'Flux Vals All No Fit', 'Range', 'A1'); % Sheet 9
+
     % writematrix(dPValsControl, excelFile, 'Sheet', 'dP Vals Control', 'Range', 'A1'); % Sheet 6
     % writematrix(dPValsDetrend, excelFile, 'Sheet', 'dP Vals Detrend', 'Range', 'A1'); % Sheet 7
     % writematrix(dPValsNorm, excelFile, 'Sheet', 'dP Vals Norm', 'Range', 'A1'); % Sheet 8
     % writematrix(dPValsAll, excelFile, 'Sheet', 'dP Vals All', 'Range', 'A1'); % Sheet 9
-    % 
-    % writematrix(diffInterp, excelFile, 'Sheet', 'Diff Interp', 'Range', 'A1'); % Sheet 10
-    % writematrix(diffNorm, excelFile, 'Sheet', 'Diff Norm', 'Range', 'A1'); % Sheet 11
-    % writematrix(diffDetrend, excelFile, 'Sheet', 'Diff Detrend', 'Range', 'A1'); % Sheet 12
-    % writematrix(diffAll, excelFile, 'Sheet', 'diff All', 'Range', 'A1'); % Sheet 13
-    % 
+
+    writematrix(diffInterp, excelFile, 'Sheet', 'Diff Interp', 'Range', 'A1'); % Sheet 10
+    writematrix(diffNorm, excelFile, 'Sheet', 'Diff Norm', 'Range', 'A1'); % Sheet 11
+    writematrix(diffDetrend, excelFile, 'Sheet', 'Diff Detrend', 'Range', 'A1'); % Sheet 12
+    writematrix(diffAll, excelFile, 'Sheet', 'diff All', 'Range', 'A1'); % Sheet 13
+
+    writematrix(diffNoFit, excelFile, 'Sheet', 'Diff No Fit', 'Range', 'A1'); % Sheet 14
+    writematrix(diffInterpNoFit, excelFile, 'Sheet', 'Diff Interp No Fit', 'Range', 'A1'); % Sheet 15
+    writematrix(diffDetrendNoFit, excelFile, 'Sheet', 'Diff Detrend No Fit', 'Range', 'A1'); % Sheet 16
+    writematrix(diffAllNoFit, excelFile, 'Sheet', 'Diff All No Fit', 'Range', 'A1'); % Sheet 17
+
     % writematrix(diffDPNorm, excelFile, 'Sheet', 'Diff dP Norm', 'Range', 'A1'); % Sheet 14
     % writematrix(diffDPDetrend, excelFile, 'Sheet', 'Diff dP Detrend', 'Range', 'A1'); % Sheet 15
     % writematrix(diffDPAll, excelFile, 'Sheet', 'Diff dP All', 'Range', 'A1'); % Sheet 16
@@ -271,7 +266,7 @@ cd('..')
 
 %% Extraneous Functions
 
-function timePressureVals = setTimePressureCurves(timeVals, pressureVals)
+function timePressureVals = createTimePressureCurves(timeVals, pressureVals)
     %{
     Calculate the biexpnential fitted curve, and stores values in a
     timePressure array
@@ -380,16 +375,31 @@ function fluxInterp = interpolateFluxAvgs(timePressureVals, minP, cellVolume)
     Utilize exact pressures 20 - 100% to interpolate time
     Utilize interpolated time-pressure pairs to calculate avg fluxes
     %}
+
     pEndInterp = minP; % End Pressure
     pStartInterp = timePressureVals(1, 2); % Start pressure
     tStartInterp = timePressureVals(1, 1); % Start time
-    [finalPressureVals, ~, ~] =...
-        unique(timePressureVals, 'rows', 'stable'); % Ensures P vs t is unique
-    tEndInterp = interp1(finalPressureVals(:, 2), ...
-        finalPressureVals(:, 1), pEndInterp); % End Time, Intepolated at min pressure
+
+    % Ensure P vs t is unique
+    [~, uniqueIndices] = unique(timePressureVals(:, 2), 'stable');
+    finalPressureVals = timePressureVals(uniqueIndices, :);
+
+    tEndInterp = interp1(finalPressureVals(:, 2), finalPressureVals(:, 1), pEndInterp); % End Time, Interpolated at min pressure
     dPInterp = pStartInterp - pEndInterp; % Pressure drop
     dtInterp = tEndInterp - tStartInterp; % Time elapsed
     fluxInterp = pressureToFlux(dPInterp, dtInterp, cellVolume); % Calculates flux
+    
+     
+    % pEndInterp = minP; % End Pressure
+    % pStartInterp = timePressureVals(1, 2); % Start pressure
+    % tStartInterp = timePressureVals(1, 1); % Start time
+    % [finalPressureVals, ~, ~] =...
+    %     unique(timePressureVals, 'rows', 'stable'); % Ensures P vs t is unique
+    % tEndInterp = interp1(finalPressureVals(:, 2), ...
+    %     finalPressureVals(:, 1), pEndInterp); % End Time, Intepolated at min pressure
+    % dPInterp = pStartInterp - pEndInterp; % Pressure drop
+    % dtInterp = tEndInterp - tStartInterp; % Time elapsed
+    % fluxInterp = pressureToFlux(dPInterp, dtInterp, cellVolume); % Calculates flux
 end
 
 function maxFlux = calculateFluxMax(timeVals, pressureVals, cellArea, cellVolume)
