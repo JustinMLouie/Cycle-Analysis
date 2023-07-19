@@ -8,8 +8,9 @@ clc;
 cd("Raw Data") % Enter directory with all data files
 volData = readmatrix("cellvolumes.xlsx", "Sheet", 1);
 
-for n = 1:20
+% TODO: Test if triple exponential fit matches curve
 
+for n = 6:6
 
     % Loading Raw Data File
     rawFileName = append('rawdata', int2str(n), '.xlsx'); % Sets the file name to be imported
@@ -115,7 +116,7 @@ for n = 1:20
         % Create non-fitted time-pressure value arrays
         pressureTime = createTimePressureVals(timeVals, pressureVals);
         pressureTimeDetrend = createTimePressureVals(timeValsDetrend, pressureValsDetrend);
-      
+
         % Calculates Max Flux Values
         fluxVals(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea, cellVolume); % Biexponential
         fluxValsInterp(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea, cellVolume); % Normalized
@@ -148,6 +149,32 @@ for n = 1:20
         ccVals(i - 1, 2) = ccCoulumbs;
         feVals(i - 1) = fe;
         dPValsControl(i - 1) = dPFit;
+
+        if i == 20
+            figure()
+            yyaxis left
+            plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'b', 'LineWidth', 1.0); % Fitted curve
+            ylabel("Pressure (psi)", 'Color', 'c')
+            yline(minP(7), '--b', 'LineWidth', 1.0)
+            yline(minP(6), '--b', 'LineWidth', 1.0)
+
+            yyaxis right
+            plot(timeValsNorm, pressureValsNorm, 'r', 'LineWidth', 1.0); % Normalized Curve
+            yline(minPNorm(7), '--r', 'LineWidth', 1.0)
+            yline(minPNorm(6), '--r', 'LineWidth', 1.0)
+
+            xlim([0 100])
+                    
+            ax = gca; % Get current axes handle
+            ax.YAxis(1).Color = 'b'; % Left y-axis color
+            ax.YAxis(2).Color = 'r'; % Right y-axis color
+
+            ylabel("Pressure (unitless)", 'Color', 'r')
+            xlabel("Time (s)");
+            legend("Control", "80% Control", "70% Control", "Normalized", "80% Normalized", "70% Normalized")
+            title("rawdata" + n + " Cycle " + i);
+
+        end
 
         % Avg calculations at 20-100%
         minPData = [];
@@ -388,18 +415,6 @@ function fluxInterp = interpolateFluxAvgs(timePressureVals, minP, cellVolume)
     dPInterp = pStartInterp - pEndInterp; % Pressure drop
     dtInterp = tEndInterp - tStartInterp; % Time elapsed
     fluxInterp = pressureToFlux(dPInterp, dtInterp, cellVolume); % Calculates flux
-    
-     
-    % pEndInterp = minP; % End Pressure
-    % pStartInterp = timePressureVals(1, 2); % Start pressure
-    % tStartInterp = timePressureVals(1, 1); % Start time
-    % [finalPressureVals, ~, ~] =...
-    %     unique(timePressureVals, 'rows', 'stable'); % Ensures P vs t is unique
-    % tEndInterp = interp1(finalPressureVals(:, 2), ...
-    %     finalPressureVals(:, 1), pEndInterp); % End Time, Intepolated at min pressure
-    % dPInterp = pStartInterp - pEndInterp; % Pressure drop
-    % dtInterp = tEndInterp - tStartInterp; % Time elapsed
-    % fluxInterp = pressureToFlux(dPInterp, dtInterp, cellVolume); % Calculates flux
 end
 
 function maxFlux = calculateFluxMax(timeVals, pressureVals, cellArea, cellVolume)
