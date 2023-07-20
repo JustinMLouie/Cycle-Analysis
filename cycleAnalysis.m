@@ -10,7 +10,7 @@ volData = readmatrix("cellvolumes.xlsx", "Sheet", 1);
 
 % TODO: Test if triple exponential fit matches curve
 
-for n = 6:6
+for n = 1:1
 
 
     % Loading Raw Data File
@@ -22,7 +22,7 @@ for n = 6:6
     cellVolume = volData(n, 2) * 1e-3; % Processed Data cell volume, L
     uAhToCoulumbs = 0.0036;
     cellArea = 2e-4; % Elecrode area, m^2
-    mwCO2 = 44; % Molecular weight of CO2, g/mol
+    mwCO2 = 44; % Molecular weight of CO2, g/mol 
     F = 96485; % Faraday Constant, (s * A)/mol
 
     % Key Metrics calculated from Raw Data
@@ -62,13 +62,30 @@ for n = 6:6
     detrendData = rawData; % Create a copy of rawData 
     detrendData(:, 19) = detrendPressure; % copy the detrended pressurevalues to detrendData
 
+    detrendGraphData = detrendData(detrendData(:, 5) <= 10, :);
+    pressureGraphData = rawData(rawData(:, 5) <= 10, :);
+
+    % figure()
+    % subplot(2, 1, 1);
+    % plot(pressureGraphData(:, 3), pressureGraphData(:, 19));
+    % xlabel("Time (s)")
+    % ylabel("Pressure (psi)")
+    % title("Transducer Pressure Values")
+    % 
+    % subplot(2, 1, 2);
+    % plot(detrendGraphData(:, 3), detrendGraphData(:, 19));
+    % xlabel("Time (s)")
+    % ylabel("Pressure (psi)")
+    % title("Detrended Pressure Values")
+    % 
+    % 
+
     %% Calculating Values
 
     fprintf("Starting calculations \n")
 
     % Loops through each cycle, skips the incomplete cycle 1
     for i = 2:numCycles - 1 % iterate through cycles
-
         % Extracts cycle data
         cycData = rawData(rawData(:, 5) == i, :); % Data in cycle i
         chargeRegionData = cycData(cycData(:, 7) > 0.00002, :);
@@ -91,10 +108,7 @@ for n = 6:6
         pFitTimePressure = createTimePressureCurves(timeVals, pressureVals);
 
         % Calculate Normalized Pressure Data
-        [pFitTimePressureNorm, aPrimeNorm, cPrimeNorm] = normalizeTimePressureVals(timeVals, pressureVals);
-        aValsNorm(i - 1) = aPrimeNorm;
-        cValsNorm(i - 1) = cPrimeNorm;
-        rescaleVals = pressureVals(1) - mean(pressureVals(end - 4:end)); 
+        [pFitTimePressureNorm, rescaleVals] = normalizeTimePressureVals(timeVals, pressureVals);
         dPValsNorm(i - 1) = rescaleVals; % stores dP calculated in Normalization cycles
         timeValsNorm = pFitTimePressureNorm(:, 1);
         pressureValsNorm = pFitTimePressureNorm(:, 2);
@@ -106,10 +120,7 @@ for n = 6:6
         dPValsDetrend(i - 1) = pFitTimePressureDetrend(1, 2) - pFitTimePressureDetrend(end, 2);
 
         % Calculate All Data Processing (Detrend --> Normalized --> Fitted --> Interpolated)
-        [pFitTimePressureAll, aPrimeAll, cPrimeAll] = normalizeTimePressureVals(timeValsDetrend, pressureValsDetrend); % Normalize + Fit the detrended data
-        aValsAll(i - 1) = aPrimeAll;
-        cValsAll(i - 1) = cPrimeAll;
-        rescaleValsAll = pressureValsDetrend(1) - mean(pressureValsDetrend(end - 5:end)); % Create value to rescale detrended data
+        [pFitTimePressureAll, rescaleValsAll] = normalizeTimePressureVals(timeValsDetrend, pressureValsDetrend); % Normalize + Fit the detrended data
         dPValsAll(i - 1) = rescaleValsAll; % stores dP calculated in Normalization cycles
         timeValsAll = pFitTimePressureAll(:, 1);
         pressureValsAll = pFitTimePressureAll(:, 2);
@@ -130,9 +141,9 @@ for n = 6:6
 
         % Calculates minimum pressure drops for avg flux calcs
         minP = calculateMinP(pFitTimePressure);
-        minPNorm = [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0];
+        minPNorm = calculateMinP(pFitTimePressureNorm);
         minPDetrend = calculateMinP(pFitTimePressureDetrend);
-        minPAll = [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, pressureValsAll(end)]; 
+        minPAll = calculateMinP(pFitTimePressureAll); 
 
         minPNoFit = calculateMinP(pressureTime);
         minPDetrendNoFit = calculateMinP(pressureTimeDetrend);
@@ -151,8 +162,32 @@ for n = 6:6
         feVals(i - 1) = fe;
         dPValsControl(i - 1) = dPFit;
 
+        % Plot to demonstrate 20% Cutoff calculation errors
+        % figure()
+        % plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'b', 'LineWidth', 1.0); hold on;
+        % scatter(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'b', 'LineWidth', 2.0);
+        % xlim([0 10])
+        % yline(minP(1), 'k', 'LineWidth', 2.0);
+        % xlabel("Time (s)")
+        % ylabel("Pressure (psi)")
+
+
+        % if i == 20
+        %     figure()
+        %     plot(pressureTime(:, 1), pressureTime(:, 2), 'b', 'LineWidth', 1.0)
+        %     yline(minPNoFit(7), '--r', 'LineWidth', 1.0);
+        %     hold on;
+        %     plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'r', 'LineWidth', 1.0);
+        %     yline(minP(7), '--r', 'LineWidth', 1.0);
+        %     ylabel("Pressure (psi)")
+        %     xlabel("Time (s)")
+        %     legend("Unfitted", "80% Unfitted Cutoff", "Fitted", "80% Fitted Cutoff")
+        % 
+        % end
+
         if i == 20
             figure()
+            subplot(2, 1, 1)
             yyaxis left
             plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'b', 'LineWidth', 1.0); % Fitted curve
             ylabel("Pressure (psi)", 'Color', 'c')
@@ -164,8 +199,8 @@ for n = 6:6
             yline(minPNorm(7), '--r', 'LineWidth', 1.0)
             yline(minPNorm(6), '--r', 'LineWidth', 1.0)
 
-            xlim([0 100])
-                    
+            % xlim([0 100])
+
             ax = gca; % Get current axes handle
             ax.YAxis(1).Color = 'b'; % Left y-axis color
             ax.YAxis(2).Color = 'r'; % Right y-axis color
@@ -175,6 +210,29 @@ for n = 6:6
             legend("Control", "80% Control", "70% Control", "Normalized", "80% Normalized", "70% Normalized")
             title("rawdata" + n + " Cycle " + i);
 
+            subplot(2, 1, 2)
+            yyaxis left
+            plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'b', 'LineWidth', 1.0); % Fitted curve
+            ylabel("Pressure (psi)", 'Color', 'c')
+            yline(minP(7), '--b', 'LineWidth', 1.0)
+            yline(minP(6), '--b', 'LineWidth', 1.0)
+
+            yyaxis right
+            plot(pFitTimePressureDetrend(:, 1), pFitTimePressureDetrend(:, 2), 'r', 'LineWidth', 1.0); % Normalized Curve
+            yline(minPDetrend(7), '--r', 'LineWidth', 1.0)
+            yline(minPDetrend (6), '--r', 'LineWidth', 1.0)
+
+            % xlim([0 100])
+
+            ax = gca; % Get current axes handle
+            ax.YAxis(1).Color = 'b'; % Left y-axis color
+            ax.YAxis(2).Color = 'r'; % Right y-axis color
+
+            ylabel("Pressure (unitless)", 'Color', 'r')
+            xlabel("Time (s)");
+            legend("Control", "80% Control", "70% Control", "Detrended", "80% Normalized", "70% Normalized")
+            title("rawdata" + n + " Cycle " + i);
+            
         end
 
         % Avg calculations at 20-100%
@@ -314,7 +372,7 @@ function timePressureVals = createTimePressureVals(timeVals, pressureVals)
     timePressureVals(:, 2) = pressureVals; % sets column 2 to pressures values
 end
 
-function [normalizedTPVals, aPrime, cPrime] = normalizeTimePressureVals(timeVals, pressureVals) 
+function [normalizedTPVals, normalizingDP] = normalizeTimePressureVals(timeVals, pressureVals) 
     %{
     Calculate Normalized Pressure Values
     First Normalization: Normalized = (pressure - min) / dP
@@ -324,18 +382,10 @@ function [normalizedTPVals, aPrime, cPrime] = normalizeTimePressureVals(timeVals
         P = a' * exp(b * t) + c' * exp(d*t)
     %}
     normalizingValue = min(pressureVals); % Calculates baseline pressure
-    normalizingDP = range(pressureVals); % Calculates range
+    normalizingDP = pressureVals(1) - mean(pressureVals(end - 4:end)); % Calculates range
     pressureValsNorm = (pressureVals - normalizingValue) / normalizingDP; % Normalizes pressures between 0 and 1
     timeValsNorm = timeVals - timeVals(1); % Sets time to start at 0
-    pFitCurveNorm = fit(timeValsNorm, pressureValsNorm, 'exp2'); % First Normalization
-
-    curveCoeff = coeffvalues(pFitCurveNorm); % extract coeffs from biexponential fit
-    aPrime = curveCoeff(1) / (curveCoeff(1) + curveCoeff(3)); % Normalizing Fitted value coeffs
-    cPrime = curveCoeff(3) / (curveCoeff(1) + curveCoeff(3)); % Normalizing Fitted value coeffs
-    eqtn = fittype('a * exp(b * x) + c * exp(d*x)'); % Defining biexponential eqtn
-    pFitCurveNorm2 = cfit(eqtn, aPrime, curveCoeff(2), cPrime, curveCoeff(4));
-    pFitCurveNormVals = pFitCurveNorm2(timeValsNorm); % Calculating Second Normalization p vals
-    normalizedTPVals = createTimePressureVals(timeValsNorm, pFitCurveNormVals);
+    normalizedTPVals = createTimePressureCurves(timeValsNorm, pressureValsNorm);
 end
 
 function minP = calculateMinP(timePressureVals)
@@ -404,7 +454,13 @@ function fluxInterp = interpolateFluxAvgs(timePressureVals, minP, cellVolume)
     Utilize interpolated time-pressure pairs to calculate avg fluxes
     %}
 
-    pEndInterp = minP; % End Pressure
+    pEndInterp = 0;
+    if (minP < timePressureVals(end, 2))
+        pEndInterp = timePressureVals(end, 2);
+    else
+        pEndInterp = minP; % End Pressure
+    end
+    
     pStartInterp = timePressureVals(1, 2); % Start pressure
     tStartInterp = timePressureVals(1, 1); % Start time
 
