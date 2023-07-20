@@ -5,6 +5,7 @@ clear;
 clc;
 
 fluxVals = zeros(99, 10, 19);
+fluxValsDetrend = zeros(99, 10, 19);
 
 diffInterp = zeros(99, 10, 19);
 diffNorm = zeros(99, 10, 19);
@@ -18,30 +19,30 @@ diffAllNoFit = zeros(99, 10, 13);
 
 % Load % differences for each flux calculation
 for i = 1:20
-    rawFileName = append('Flux Comparisons No Fit/fluxComparisons', int2str(i), '.xlsx'); % Sets the file name to be imported
+    rawFileName = append('Flux Comparisons Normalization Fixed/fluxComparisons', int2str(i), '.xlsx'); % Sets the file name to be imported
+    
+    fprintf(rawFileName)
 
     % Biexponential comparisons: dataset 3 omitted due to missing data
     if i < 3 
         fluxVals(:, :, i) = readmatrix(rawFileName, 'Sheet', 1);
+        fluxValsDetrend(:, :, i) = readmatrix(rawFileName, 'Sheet', 4);
         diffInterp(:, :, i) = readmatrix(rawFileName, 'Sheet', 10); % Pulls data from 10th sheet
         diffNorm(:, :, i) = readmatrix(rawFileName, 'Sheet', 11); % Pulls data from 11th sheet
         diffDetrend(:, :, i) = readmatrix(rawFileName, 'Sheet', 12); % Pulls data from 12th sheet
         diffAll(:, :, i) = readmatrix(rawFileName, 'Sheet', 13); % Pulls data from 13th sheet
 
-        % diffNoFit(:, :, i - 5) = readmatrix(rawFileName, 'Sheet', 14); % Pulls data from 14th sheet
-        % diffInterpNoFit(:, :, i - 5) = readmatrix(rawFileName, 'Sheet', 15); % Pulls data from 15th sheet
-        % diffDetrendNoFit(:, :, i - 5) = readmatrix(rawFileName, 'Sheet', 16); % Pulls data from 16th sheet
-        % diffAllNoFit(:, :, i - 5) = readmatrix(rawFileName, 'Sheet', 17); % Pulls data from 17th sheet
-
     elseif i > 3
         fluxVals(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 1);
+        fluxValsDetrend(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 4);
+
         diffInterp(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 10); % Pulls data from 10th sheet
         diffNorm(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 11); % Pulls data from 11th sheet
         diffDetrend(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 12); % Pulls data from 12th sheet
         diffAll(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 13); % Pulls data from 13th sheet
     end
 
-    % Biexponential comparisons: 
+    % Non-Biexponential comparisons: 
     % Datasets 1-5 omitted due to missing data
     % Datasets 6, 10 omitted due to outliers
 
@@ -59,7 +60,7 @@ for i = 1:20
         diffAllNoFit(:, :, i - 7) = readmatrix(rawFileName, 'Sheet', 17); % Pulls data from 17th sheet
     end
     
-end
+end 
 
 %{
 
@@ -75,6 +76,7 @@ cycles = (1:99).';
 
 % Control Flux Vals
 [controlAvgs, controlMins, controlMaxs] = calculateStats(fluxVals);
+[detrendValAvgs, detrendValMins, detrendValMaxs] = calculateStats(fluxValsDetrend);
 
 % Fitted Flux Comparisons 
 [interpAvgs, interpMins, interpMaxs] = calculateStats(diffInterp);
@@ -89,32 +91,34 @@ cycles = (1:99).';
 [allNoFitAvgs, allNoFitMins, allNoFitMaxs] = calculateStats(diffAllNoFit);
 
 
-%% Control Graphs
-figure();
-sgtitle("Control Flux Values"); % Create title of overall Figure
-
-subplot(2, 3, 1)
-col = 1;
-percent = col * 10;
-plot(cycles, controlAvgs(:, col), 'b', 'LineWidth', 2.0); hold on; 
-fill([cycles; flipud(cycles)], [controlMins(:, col); flipud(controlMaxs(:, col))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none'); 
-ylim([0 50]);
-xlabel("Cycle");
-ylabel("Flux (gCO2 / (m^2 * h))");
-title("Max Flux")
-
-for i = 1:5
-    subplot(2, 3, i + 1)
-    col = i * 2;
-    percent = col * 10;
-    plot(cycles, controlAvgs(:, col), 'b', 'LineWidth', 2.0); hold on; 
-    fill([cycles; flipud(cycles)], [controlMins(:, col); flipud(controlMaxs(:, col))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none'); 
-    ylim([0 50]);
-    xlabel("Cycle");
-    ylabel("Flux (gCO2 / (m^2 * h))");
-    title(percent + "% Flux Avg")
-end
-
+% %% Control Graphs
+% figure();
+% plot(cycles, controlAvgs(:, 8), 'b', 'LineWidth', 2.0); hold on; 
+% fill([cycles; flipud(cycles)], [controlMins(:, 8); flipud(controlMaxs(:, 8))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none'); 
+% ylim([0 50]);
+% xlabel("Cycle");
+% ylabel("Flux (gCO2 / (m^2 * h))");
+% 
+% % Detrended Diff Subplot
+% figure()
+% subplot(2, 1, 1)
+% plot(cycles, controlAvgs(:, 8), 'b', 'LineWidth', 2.0); hold on;
+% % fill([cycles; flipud(cycles)], [controlMins(:, 8); flipud(controlMaxs(:, 8))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+% xlim([1 20])
+% ylim([8 15])
+% % ylim([-30 30])
+% xlabel("Cycle")
+% ylabel("Flux (gCO2 / (m^2 * h))");
+% title("Control Flux Values")
+% 
+% subplot(2, 1, 2)
+% plot(cycles, detrendValAvgs(:, 8), 'b', 'LineWidth', 2.0); hold on;
+% % fill([cycles; flipud(cycles)], [detrendValMins(:, 8); flipud(detrendValMaxs(:, 8))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+% xlim([1 20])
+% ylim([8 15])
+% xlabel("Cycle")
+% ylabel("Flux (gCO2 / (m^2 * h))");
+% title("Detrended Flux Values")
 
 
 %% Comparison Graphs
@@ -167,7 +171,7 @@ for i = 2:2:10 % loop through to create graphs of the 20%, 40%, 60%, 80%, and 10
     saveas(gcf,fileName); % Saves current figure
 
     figure()
-    sgtitle(percent + "% Flux Avg Comparisons: Non-Fitted Pressure Vals"); % Create title of overall Figure
+    sgtitle(percent + "% Flux Avg Comparisons"); % Create title of overall Figure
 
     %%% Non Fitted Comparisons
 
@@ -175,7 +179,7 @@ for i = 2:2:10 % loop through to create graphs of the 20%, 40%, 60%, 80%, and 10
     subplot(2, 2, 1)
     plot(cycles, noFitAvgs(:, i), 'b', 'LineWidth', 2.0); hold on;
     fill([cycles; flipud(cycles)], [noFitMins(:, i); flipud(noFitMaxs(:, i))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-    ylim([-100 100])
+    ylim([-30 30])
     xlabel("Cycle");
     ylabel("Percent Difference");
     title("Raw Transducer Flux Difference");
@@ -184,7 +188,7 @@ for i = 2:2:10 % loop through to create graphs of the 20%, 40%, 60%, 80%, and 10
     subplot(2, 2, 2)
     plot(cycles, interpNoFitAvgs(:, i), 'b', 'LineWidth', 2.0); hold on;
     fill([cycles; flipud(cycles)], [interpNoFitMins(:, i); flipud(interpNoFitMaxs(:, i))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-    ylim([-100 100])
+    ylim([-30 30])
     xlabel("Cycle");
     ylabel("Percent Difference");
     title("Non-Fitted Interpolated Flux Difference");
@@ -193,7 +197,7 @@ for i = 2:2:10 % loop through to create graphs of the 20%, 40%, 60%, 80%, and 10
     subplot(2, 2, 3)
     plot(cycles, detrendNoFitAvgs(:, i), 'b', 'LineWidth', 2.0); hold on;
     fill([cycles; flipud(cycles)], [detrendNoFitMins(:, i); flipud(detrendNoFitMaxs(:, i))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-    ylim([-100 100])
+    ylim([-30 30])
     xlabel("Cycle")
     ylabel("Percent Difference")
     title("Non-Fitted Detrended Flux Difference")
@@ -202,7 +206,7 @@ for i = 2:2:10 % loop through to create graphs of the 20%, 40%, 60%, 80%, and 10
     subplot(2, 2, 4)
     plot(cycles, allNoFitAvgs(:, i), 'b', 'LineWidth', 2.0); hold on;
     fill([cycles; flipud(cycles)], [allNoFitMins(:, i); flipud(allNoFitMaxs(:, i))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-    ylim([-100 100])
+    ylim([-30 30])
     xlabel("Cycle")
     ylabel("Percent Difference")
     title("Non-Fitted All Data Processing Flux Difference")
