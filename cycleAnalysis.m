@@ -8,9 +8,7 @@ clc;
 cd("Raw Data") % Enter directory with all data files
 volData = readmatrix("cellvolumes.xlsx", "Sheet", 1);
 
-% TODO: Test if triple exponential fit matches curve
-
-for n = 1:1
+for n = 1:20
 
 
     % Loading Raw Data File
@@ -62,23 +60,17 @@ for n = 1:1
     detrendData = rawData; % Create a copy of rawData 
     detrendData(:, 19) = detrendPressure; % copy the detrended pressurevalues to detrendData
 
-    detrendGraphData = detrendData(detrendData(:, 5) <= 10, :);
-    pressureGraphData = rawData(rawData(:, 5) <= 10, :);
-
+    %%% Detrend diagram
     % figure()
-    % subplot(2, 1, 1);
-    % plot(pressureGraphData(:, 3), pressureGraphData(:, 19));
+    % subplot(1, 2, 1)
+    % plot(rawData(:, 3), rawData(:, 19), "LineWidth", 2.0)
+    % ylabel("Pressure (psi)", "LineWidth", 2.0)
     % xlabel("Time (s)")
-    % ylabel("Pressure (psi)")
-    % title("Transducer Pressure Values")
     % 
-    % subplot(2, 1, 2);
-    % plot(detrendGraphData(:, 3), detrendGraphData(:, 19));
+    % subplot(1, 2, 2)
+    % plot(detrendData(:, 3), detrendData(:, 19), "LineWidth", 2.0)
+    % ylabel("Pressure (psi)")
     % xlabel("Time (s)")
-    % ylabel("Pressure (psi)")
-    % title("Detrended Pressure Values")
-    % 
-    % 
 
     %% Calculating Values
 
@@ -86,6 +78,7 @@ for n = 1:1
 
     % Loops through each cycle, skips the incomplete cycle 1
     for i = 2:numCycles - 1 % iterate through cycles
+    % for i = 20:20 
         % Extracts cycle data
         cycData = rawData(rawData(:, 5) == i, :); % Data in cycle i
         chargeRegionData = cycData(cycData(:, 7) > 0.00002, :);
@@ -108,8 +101,8 @@ for n = 1:1
         pFitTimePressure = createTimePressureCurves(timeVals, pressureVals);
 
         % Calculate Normalized Pressure Data
-        [pFitTimePressureNorm, rescaleVals] = normalizeTimePressureVals(timeVals, pressureVals);
-        dPValsNorm(i - 1) = rescaleVals; % stores dP calculated in Normalization cycles
+        [pFitTimePressureNorm, rescaleVal] = normalizeTimePressureVals(timeVals, pressureVals);
+        dPValsNorm(i - 1) = rescaleVal;
         timeValsNorm = pFitTimePressureNorm(:, 1);
         pressureValsNorm = pFitTimePressureNorm(:, 2);
         
@@ -120,8 +113,8 @@ for n = 1:1
         dPValsDetrend(i - 1) = pFitTimePressureDetrend(1, 2) - pFitTimePressureDetrend(end, 2);
 
         % Calculate All Data Processing (Detrend --> Normalized --> Fitted --> Interpolated)
-        [pFitTimePressureAll, rescaleValsAll] = normalizeTimePressureVals(timeValsDetrend, pressureValsDetrend); % Normalize + Fit the detrended data
-        dPValsAll(i - 1) = rescaleValsAll; % stores dP calculated in Normalization cycles
+        [pFitTimePressureAll, rescaleValAll] = normalizeTimePressureVals(timeValsDetrend, pressureValsDetrend); % Normalize + Fit the detrended data
+        dPValsAll(i - 1) = rescaleValAll;
         timeValsAll = pFitTimePressureAll(:, 1);
         pressureValsAll = pFitTimePressureAll(:, 2);
 
@@ -132,9 +125,9 @@ for n = 1:1
         % Calculates Max Flux Values
         fluxVals(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea, cellVolume); % Biexponential
         fluxValsInterp(i - 1, 1) = calculateFluxMax(timeVals, pressureVals, cellArea, cellVolume); % Normalized
-        fluxValsNorm(i - 1, 1) = calculateFluxMax(timeValsNorm, pressureValsNorm, cellArea, cellVolume) * rescaleVals; % Normalized
+        fluxValsNorm(i - 1, 1) = calculateFluxMax(timeValsNorm, pressureValsNorm, cellArea, cellVolume) * rescaleVal; % Normalized
         fluxValsDetrend(i - 1, 1) = calculateFluxMax(timeVals, pressureValsDetrend, cellArea, cellVolume); % Detrended
-        fluxValsAll(i - 1, 1) = calculateFluxMax(timeValsAll, pressureValsAll, cellArea, cellVolume) * rescaleValsAll; % All data processing applied
+        fluxValsAll(i - 1, 1) = calculateFluxMax(timeValsAll, pressureValsAll, cellArea, cellVolume) * rescaleValAll; % All data processing applied
         
         %%%%% Did not calculate max flux for non-fitted, cannot calc
         %%%%% without curve, no use doing so
@@ -162,12 +155,56 @@ for n = 1:1
         feVals(i - 1) = fe;
         dPValsControl(i - 1) = dPFit;
 
-        % Plot to demonstrate 20% Cutoff calculation errors
+        % Plot to demonstrate what a biexponential Fit is
         % figure()
-        % plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'b', 'LineWidth', 1.0); hold on;
-        % scatter(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'b', 'LineWidth', 2.0);
+        % scatter(timeVals(2:2:end), pressureVals(2:2:end), "LineWidth", 2.0); hold on;
+        % plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), "LineWidth", 2.0);
+        % xlabel("Time (s)")
+        % ylabel("Pressure (psi)")
+        % legend("Transducer Data", "Biexponentially Fitted Data")
+
+        % Plot to demonstrate non-fitted data
+        % figure()
+        % scatter(timeVals(2:4:end), pressureVals(2:4:end), "LineWidth", 2.0); hold on;
+        % plot(timeVals, pressureVals, "LineWidth", 2.0);
+        % xlabel("Time (s)")
+        % ylabel("Pressure (psi)")
+        % legend("Transducer Data", "Biexponentially Fitted Data")
+
+        % plots to demonstrate normalization
+        % figure() 
+        % subplot(1, 2, 1)
+        % plot(timeVals, pressureVals, "LineWidth", 4.0)
+        % ylabel("Pressure (psi)")
+        % xlabel("Time (s)")
+        % 
+        % subplot(1, 2, 2)
+        % plot(pFitTimePressureNorm(:, 1), pFitTimePressureNorm(:, 2), "LineWidth", 4.0)
+        % ylabel("Pressure (psi)")
+        % xlabel("Time (s)")
+        % 
+
+        % Plot to demonstrate 20% Cutoff calculation errors +
+        % interpolation
+        % figure()
+        % subplot(1, 2, 1);
+        % x = (1:100);
+        % y1 = (x - 50) .* (x - 50);
+        % y2 =  x * -50 + 2500;
+        % plot(x, y1, "LineWidth", 4.0); hold on;
+        % plot(x, y2, "LineWidth", 4.0);
+        % ylim([0 2500])
+        % xlim([0 60])
+        % xline(25, '--k', "LineWidth", 2.0);
+        % yline(1250, '--k', "LineWidth", 2.0);
+        % 
+        % subplot(1, 2, 2);
+        % plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'LineWidth', 4.0); hold on;
+        % scatter(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'LineWidth', 3.0);
         % xlim([0 10])
-        % yline(minP(1), 'k', 'LineWidth', 2.0);
+        % interpTime = interp1(pFitTimePressure(:, 2), pFitTimePressure(:, 1), minP(1)); % End Time, Interpolated at min pressure
+        % xline(interpTime, '--k', 'LineWidth', 2.0);
+        % yline(minP(1), '--k', 'LineWidth', 2.0);
         % xlabel("Time (s)")
         % ylabel("Pressure (psi)")
 
@@ -175,8 +212,8 @@ for n = 1:1
         % if i == 20
         %     figure()
         %     plot(pressureTime(:, 1), pressureTime(:, 2), 'b', 'LineWidth', 1.0)
-        %     yline(minPNoFit(7), '--r', 'LineWidth', 1.0);
         %     hold on;
+        %     yline(minPNoFit(7), '--b', 'LineWidth', 1.0);
         %     plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'r', 'LineWidth', 1.0);
         %     yline(minP(7), '--r', 'LineWidth', 1.0);
         %     ylabel("Pressure (psi)")
@@ -185,55 +222,33 @@ for n = 1:1
         % 
         % end
 
-        if i == 20
-            figure()
-            subplot(2, 1, 1)
-            yyaxis left
-            plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'b', 'LineWidth', 1.0); % Fitted curve
-            ylabel("Pressure (psi)", 'Color', 'c')
-            yline(minP(7), '--b', 'LineWidth', 1.0)
-            yline(minP(6), '--b', 'LineWidth', 1.0)
-
-            yyaxis right
-            plot(timeValsNorm, pressureValsNorm, 'r', 'LineWidth', 1.0); % Normalized Curve
-            yline(minPNorm(7), '--r', 'LineWidth', 1.0)
-            yline(minPNorm(6), '--r', 'LineWidth', 1.0)
-
-            % xlim([0 100])
-
-            ax = gca; % Get current axes handle
-            ax.YAxis(1).Color = 'b'; % Left y-axis color
-            ax.YAxis(2).Color = 'r'; % Right y-axis color
-
-            ylabel("Pressure (unitless)", 'Color', 'r')
-            xlabel("Time (s)");
-            legend("Control", "80% Control", "70% Control", "Normalized", "80% Normalized", "70% Normalized")
-            title("rawdata" + n + " Cycle " + i);
-
-            subplot(2, 1, 2)
-            yyaxis left
-            plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'b', 'LineWidth', 1.0); % Fitted curve
-            ylabel("Pressure (psi)", 'Color', 'c')
-            yline(minP(7), '--b', 'LineWidth', 1.0)
-            yline(minP(6), '--b', 'LineWidth', 1.0)
-
-            yyaxis right
-            plot(pFitTimePressureDetrend(:, 1), pFitTimePressureDetrend(:, 2), 'r', 'LineWidth', 1.0); % Normalized Curve
-            yline(minPDetrend(7), '--r', 'LineWidth', 1.0)
-            yline(minPDetrend (6), '--r', 'LineWidth', 1.0)
-
-            % xlim([0 100])
-
-            ax = gca; % Get current axes handle
-            ax.YAxis(1).Color = 'b'; % Left y-axis color
-            ax.YAxis(2).Color = 'r'; % Right y-axis color
-
-            ylabel("Pressure (unitless)", 'Color', 'r')
-            xlabel("Time (s)");
-            legend("Control", "80% Control", "70% Control", "Detrended", "80% Normalized", "70% Normalized")
-            title("rawdata" + n + " Cycle " + i);
-            
-        end
+        % if i == 20
+        %     figure()
+        %     yyaxis left
+        %     scatter(timeVals, pressureVals, 'k', "LineWidth", 1.0)
+        %     hold on;
+        %     plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), '-b', 'LineWidth', 1.0); % Fitted curve
+        %     ylabel("Pressure (psi)", 'Color', 'c')
+        %     yline(minP(7), '--b', 'LineWidth', 1.0)
+        %     yline(minP(6), '--b', 'LineWidth', 1.0)
+        % 
+        %     yyaxis right
+        %     plot(timeValsNorm, pressureValsNorm, '-r', 'LineWidth', 1.0); % Normalized Curve
+        %     yline(minPNorm(7), '--r', 'LineWidth', 1.0)
+        %     yline(minPNorm(6), '--r', 'LineWidth', 1.0)
+        % 
+        %     % xlim([0 100])
+        % 
+        %     ax = gca; % Get current axes handle
+        %     ax.YAxis(1).Color = 'b'; % Left y-axis color
+        %     ax.YAxis(2).Color = 'r'; % Right y-axis color
+        % 
+        %     ylabel("Pressure (unitless)", 'Color', 'r')
+        %     xlabel("Time (s)");
+        %     legend("Transducer", "Control", "80% Control", "70% Control", "Normalized", "80% Normalized", "70% Normalized")
+        %     title("rawdata" + n + " Cycle " + i);
+        % 
+        % end
 
         % Avg calculations at 20-100%
         minPData = [];
@@ -259,8 +274,8 @@ for n = 1:1
             fluxAllNoFit = interpolateFluxAvgs(pressureTimeDetrend, minPDetrendNoFit(j), cellVolume); % Detrend --> no fit --> interp flux
 
             % Rescale Normalized Flux vals
-            fluxNorm = fluxNorm * rescaleVals; % Rescale flux vals
-            fluxAll = fluxAll * rescaleValsAll; % Rescale flux vals
+            fluxNorm = fluxNorm * rescaleVal; % Rescale flux vals
+            fluxAll = fluxAll * rescaleValAll; % Rescale flux vals
 
             % Records final calculations
             mcVals(i - 1, j + 1) = mc;
@@ -282,6 +297,9 @@ for n = 1:1
 
     cycColumn = (1:size(fluxVals)).';
     columnTitles = {'Cycle', 'Max', '20%', '30%', '40%', '50%', '60%', '70%', '80%', '90%', 'Full'};
+
+    
+
 
     % Round flux vals to 2 decimals
     fluxVals = round(fluxVals, 2);
@@ -312,39 +330,46 @@ for n = 1:1
 
     fprintf("rawdata" + n + " ended" + "\n");
 
-    %% Write data to Excel file
-    excelFile = append('fluxComparisons', int2str(n), '.xlsx');
-
-    % Write each data array to a separate sheet
-    writematrix(fluxVals, excelFile, 'Sheet', 'Flux Vals (Control)', 'Range', 'A1'); % Sheet 1
-    writematrix(fluxValsInterp, excelFile, 'Sheet', 'Flux Vals Interp', 'Range', 'A1'); % Sheet 2
-    writematrix(fluxValsNorm, excelFile, 'Sheet', 'Flux Vals Norm', 'Range', 'A1'); % Sheet 3
-    writematrix(fluxValsDetrend, excelFile, 'Sheet', 'Flux Vals Detrend', 'Range', 'A1'); % Sheet 4
-    writematrix(fluxValsAll, excelFile, 'Sheet', 'Flux Vals All', 'Range', 'A1'); % Sheet 5
-
-    writematrix(fluxValsNoFit, excelFile, 'Sheet', 'Flux Vals No Fit', 'Range', 'A1'); % Sheet 6
-    writematrix(fluxValsInterpNoFit, excelFile, 'Sheet', 'Flux Vals Interp No Fit', 'Range', 'A1'); % Sheet 7
-    writematrix(fluxValsDetrendNoFit, excelFile, 'Sheet', 'Flux Vals Detrend No Fit', 'Range', 'A1'); % Sheet 8
-    writematrix(fluxValsAllNoFit, excelFile, 'Sheet', 'Flux Vals All No Fit', 'Range', 'A1'); % Sheet 9
-
-    % writematrix(dPValsControl, excelFile, 'Sheet', 'dP Vals Control', 'Range', 'A1'); % Sheet 6
-    % writematrix(dPValsDetrend, excelFile, 'Sheet', 'dP Vals Detrend', 'Range', 'A1'); % Sheet 7
-    % writematrix(dPValsNorm, excelFile, 'Sheet', 'dP Vals Norm', 'Range', 'A1'); % Sheet 8
-    % writematrix(dPValsAll, excelFile, 'Sheet', 'dP Vals All', 'Range', 'A1'); % Sheet 9
-
-    writematrix(diffInterp, excelFile, 'Sheet', 'Diff Interp', 'Range', 'A1'); % Sheet 10
-    writematrix(diffNorm, excelFile, 'Sheet', 'Diff Norm', 'Range', 'A1'); % Sheet 11
-    writematrix(diffDetrend, excelFile, 'Sheet', 'Diff Detrend', 'Range', 'A1'); % Sheet 12
-    writematrix(diffAll, excelFile, 'Sheet', 'diff All', 'Range', 'A1'); % Sheet 13
-
-    writematrix(diffNoFit, excelFile, 'Sheet', 'Diff No Fit', 'Range', 'A1'); % Sheet 14
-    writematrix(diffInterpNoFit, excelFile, 'Sheet', 'Diff Interp No Fit', 'Range', 'A1'); % Sheet 15
-    writematrix(diffDetrendNoFit, excelFile, 'Sheet', 'Diff Detrend No Fit', 'Range', 'A1'); % Sheet 16
-    writematrix(diffAllNoFit, excelFile, 'Sheet', 'Diff All No Fit', 'Range', 'A1'); % Sheet 17
-
-    % writematrix(diffDPNorm, excelFile, 'Sheet', 'Diff dP Norm', 'Range', 'A1'); % Sheet 14
-    % writematrix(diffDPDetrend, excelFile, 'Sheet', 'Diff dP Detrend', 'Range', 'A1'); % Sheet 15
-    % writematrix(diffDPAll, excelFile, 'Sheet', 'Diff dP All', 'Range', 'A1'); % Sheet 16
+    % %% Write data to Excel file
+    % excelFile = append('fluxComparisons', int2str(n), '.xlsx');
+    % 
+    % % Biexpontially fitted fluxVals 
+    % writematrix(fluxVals, excelFile, 'Sheet', 'Flux Vals (Control)', 'Range', 'A1'); % Sheet 1
+    % writematrix(fluxValsInterp, excelFile, 'Sheet', 'Flux Vals Interp', 'Range', 'A1'); % Sheet 2
+    % writematrix(fluxValsNorm, excelFile, 'Sheet', 'Flux Vals Norm', 'Range', 'A1'); % Sheet 3
+    % writematrix(fluxValsDetrend, excelFile, 'Sheet', 'Flux Vals Detrend', 'Range', 'A1'); % Sheet 4
+    % writematrix(fluxValsAll, excelFile, 'Sheet', 'Flux Vals All', 'Range', 'A1'); % Sheet 5
+    % 
+    % % Non fitted fluxVals 
+    % writematrix(fluxValsNoFit, excelFile, 'Sheet', 'Flux Vals No Fit', 'Range', 'A1'); % Sheet 6
+    % writematrix(fluxValsInterpNoFit, excelFile, 'Sheet', 'Flux Vals Interp No Fit', 'Range', 'A1'); % Sheet 7
+    % writematrix(fluxValsDetrendNoFit, excelFile, 'Sheet', 'Flux Vals Detrend No Fit', 'Range', 'A1'); % Sheet 8
+    % writematrix(fluxValsAllNoFit, excelFile, 'Sheet', 'Flux Vals All No Fit', 'Range', 'A1'); % Sheet 9
+    % 
+    % % Biexpontially fitted fluxVals diff 
+    % writematrix(diffInterp, excelFile, 'Sheet', 'Diff Interp', 'Range', 'A1'); % Sheet 10
+    % writematrix(diffNorm, excelFile, 'Sheet', 'Diff Norm', 'Range', 'A1'); % Sheet 11
+    % writematrix(diffDetrend, excelFile, 'Sheet', 'Diff Detrend', 'Range', 'A1'); % Sheet 12
+    % writematrix(diffAll, excelFile, 'Sheet', 'diff All', 'Range', 'A1'); % Sheet 13
+    % 
+    % % Non fitted fluxVals diff
+    % writematrix(diffNoFit, excelFile, 'Sheet', 'Diff No Fit', 'Range', 'A1'); % Sheet 14
+    % writematrix(diffInterpNoFit, excelFile, 'Sheet', 'Diff Interp No Fit', 'Range', 'A1'); % Sheet 15
+    % writematrix(diffDetrendNoFit, excelFile, 'Sheet', 'Diff Detrend No Fit', 'Range', 'A1'); % Sheet 16
+    % writematrix(diffAllNoFit, excelFile, 'Sheet', 'Diff All No Fit', 'Range', 'A1'); % Sheet 17
+    % 
+    % % Biexpontially fitted dP 
+    % writematrix(dPValsControl, excelFile, 'Sheet', 'dP Vals Control', 'Range', 'A1'); % Sheet 18
+    % writematrix(dPValsDetrend, excelFile, 'Sheet', 'dP Vals Detrend', 'Range', 'A1'); % Sheet 19
+    % writematrix(dPValsNorm, excelFile, 'Sheet', 'dP Vals Norm', 'Range', 'A1'); % Sheet 20
+    % writematrix(dPValsAll, excelFile, 'Sheet', 'dP Vals All', 'Range', 'A1'); % Sheet 21
+    % 
+    % % Biexponentially fitted dP
+    % writematrix(diffDPNorm, excelFile, 'Sheet', 'Diff dP Norm', 'Range', 'A1'); % Sheet 22
+    % writematrix(diffDPDetrend, excelFile, 'Sheet', 'Diff dP Detrend', 'Range', 'A1'); % Sheet 23
+    % writematrix(diffDPAll, excelFile, 'Sheet', 'Diff dP All', 'Range', 'A1'); % Sheet 24
+    % 
+    % writematrix(ccVals, excelFile, 'Sheet', 'cc vals', 'Range', 'A1') % Sheet 25
 
 end
 
