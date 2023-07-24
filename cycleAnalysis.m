@@ -60,17 +60,19 @@ for n = 1:20
     detrendData = rawData; % Create a copy of rawData 
     detrendData(:, 19) = detrendPressure; % copy the detrended pressurevalues to detrendData
 
-    %%% Detrend diagram
-    % figure()
-    % subplot(1, 2, 1)
-    % plot(rawData(:, 3), rawData(:, 19), "LineWidth", 2.0)
-    % ylabel("Pressure (psi)", "LineWidth", 2.0)
-    % xlabel("Time (s)")
-    % 
-    % subplot(1, 2, 2)
-    % plot(detrendData(:, 3), detrendData(:, 19), "LineWidth", 2.0)
-    % ylabel("Pressure (psi)")
-    % xlabel("Time (s)")
+    %% Detrend diagram
+    figure()
+    subplot(2, 1, 1)
+    plot(rawData(:, 3), rawData(:, 19), "LineWidth", 2.0)
+    ylabel("Pressure (psi)", "LineWidth", 2.0)
+    xlabel("Time (s)")
+    title("Transducer Pressures")
+
+    subplot(2, 1, 2)
+    plot(detrendData(:, 3), detrendData(:, 19), "LineWidth", 2.0)
+    ylabel("Pressure (psi)")
+    xlabel("Time (s)")
+    title("Detrended Pressures")
 
     %% Calculating Values
 
@@ -172,41 +174,46 @@ for n = 1:20
         % legend("Transducer Data", "Biexponentially Fitted Data")
 
         % plots to demonstrate normalization
-        % figure() 
-        % subplot(1, 2, 1)
-        % plot(timeVals, pressureVals, "LineWidth", 4.0)
-        % ylabel("Pressure (psi)")
-        % xlabel("Time (s)")
-        % 
-        % subplot(1, 2, 2)
-        % plot(pFitTimePressureNorm(:, 1), pFitTimePressureNorm(:, 2), "LineWidth", 4.0)
-        % ylabel("Pressure (psi)")
-        % xlabel("Time (s)")
-        % 
+        if i < 10
+            figure()
+            subplot(2, 1, 1)
+            plot(timeVals, pressureVals, "LineWidth", 2.0)
 
-        % Plot to demonstrate 20% Cutoff calculation errors +
-        % interpolation
-        % figure()
-        % subplot(1, 2, 1);
-        % x = (1:100);
-        % y1 = (x - 50) .* (x - 50);
-        % y2 =  x * -50 + 2500;
-        % plot(x, y1, "LineWidth", 4.0); hold on;
-        % plot(x, y2, "LineWidth", 4.0);
-        % ylim([0 2500])
-        % xlim([0 60])
-        % xline(25, '--k', "LineWidth", 2.0);
-        % yline(1250, '--k', "LineWidth", 2.0);
+            yline(pressureVals(1), '--k', "LineWidth", 1.0);
+            yline(pressureVals(end), '--k', "LineWidth", 1.0);
+            ylabel("Pressure (psi)")
+            xlabel("Time (s)")
+            subplot(2, 1, 2)
+            plot(pFitTimePressureNorm(:, 1), pFitTimePressureNorm(:, 2), "LineWidth", 2.0)
+            ylabel("Pressure (psi)")
+            xlabel("Time (s)")
+        end
+        
+
+        % Plot to demonstrate 20% Cutoff calculation errors + interpolation
+        % if i < 20
+        %     figure()
+        %     subplot(2, 1, 1);
+        %     x = (1:100);
+        %     y1 = (x - 50) .* (x - 50);
+        %     y2 =  x * -50 + 2500;
+        %     plot(x, y1, "LineWidth", 2.0); hold on;
+        %     plot(x, y2, "LineWidth", 2.0);
+        %     ylim([0 2500])
+        %     xlim([0 60])
+        %     xline(25, '--k', "LineWidth", 1.5);
+        %     yline(1250, '--k', "LineWidth", 1.5);
         % 
-        % subplot(1, 2, 2);
-        % plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'LineWidth', 4.0); hold on;
-        % scatter(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'LineWidth', 3.0);
-        % xlim([0 10])
-        % interpTime = interp1(pFitTimePressure(:, 2), pFitTimePressure(:, 1), minP(1)); % End Time, Interpolated at min pressure
-        % xline(interpTime, '--k', 'LineWidth', 2.0);
-        % yline(minP(1), '--k', 'LineWidth', 2.0);
-        % xlabel("Time (s)")
-        % ylabel("Pressure (psi)")
+        %     subplot(2, 1, 2);
+        %     plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'LineWidth', 2.0); hold on;
+        %     scatter(pFitTimePressure(:, 1), pFitTimePressure(:, 2), 'LineWidth', 1.5);
+        %     xlim([0 10])
+        %     interpTime = interp1(pFitTimePressure(:, 2), pFitTimePressure(:, 1), minP(1)); % End Time, Interpolated at min pressure
+        %     xline(interpTime, '--k', 'LineWidth', 1.5);
+        %     yline(minP(1), '--k', 'LineWidth', 1.5);
+        %     xlabel("Time (s)")
+        %     ylabel("Pressure (psi)")
+        % end
 
 
         % if i == 20
