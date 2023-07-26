@@ -54,12 +54,6 @@ for n = 1:numFiles
     dPValsDetrend = zeros(numCycles - 2, 1);
     dPValsNorm = zeros(numCycles - 2, 1);
     dPValsAll = zeros(numCycles - 2, 1);
-
-    % Normalization Coefficients
-    aValsNorm = zeros(numCycles - 2, 1);
-    cValsNorm = zeros(numCycles - 2, 1);
-    aValsAll = zeros(numCycles - 2, 1);
-    cValsAll = zeros(numCycles - 2, 1);
     
     % Caclulate detrendData
     detrendPressure = detrend(rawData(:, 19), 10); % Detrend the pressure values
