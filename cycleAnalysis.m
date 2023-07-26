@@ -5,19 +5,25 @@ clc;
 
 %% Loading Cell Volume File
 
-cd("Raw Data") % Enter directory with all data files
-volData = readmatrix("cellvolumes.xlsx", "Sheet", 1);
+% rawDataFiles = findDatasheets('.', "TemporaryTestName_Channel"); % used for poor performance cells
+rawDataFiles = findDatasheets('.', "TemporaryTestName_Channel"); 
+procDataFiles = findDatasheets('.', "Processed Data");
 
-for n = 1:20
+numFiles = length(rawDataFiles);
 
-
-    % Loading Raw Data File
-    rawFileName = append('rawdata', int2str(n), '.xlsx'); % Sets the file name to be imported
-    rawData = readmatrix(rawFileName, 'Sheet', 2); % Pulls data from 2nd sheet of rawData file
+for n = 1:numFiles
 
     %% Set Up
+    % Loading Raw Data File
+    rawFileName = string(rawDataFiles(n));
+    rawData = readmatrix(rawFileName, 'Sheet', 2); % Pulls data from 2nd sheet of rawData file
+
+    % Loading Proc Data File 
+    procFileName = string(procDataFiles(n));
+    cellVolData = readmatrix(procFileName, 'Sheet', 1); % Pulls data from 2nd sheet of rawData file
+  
     % Constants used in calculations
-    cellVolume = volData(n, 2) * 1e-3; % Processed Data cell volume, L
+    cellVolume = cellVolData(8, 2) * 1e-3; % Processed Data cell volume, L
     uAhToCoulumbs = 0.0036;
     cellArea = 2e-4; % Elecrode area, m^2
     mwCO2 = 44; % Molecular weight of CO2, g/mol 
@@ -60,27 +66,28 @@ for n = 1:20
     detrendData = rawData; % Create a copy of rawData 
     detrendData(:, 19) = detrendPressure; % copy the detrended pressurevalues to detrendData
 
-    %% Detrend diagram
-    figure()
-    subplot(2, 1, 1)
-    plot(rawData(:, 3), rawData(:, 19), "LineWidth", 2.0)
-    ylabel("Pressure (psi)", "LineWidth", 2.0)
-    xlabel("Time (s)")
-    title("Transducer Pressures")
-
-    subplot(2, 1, 2)
-    plot(detrendData(:, 3), detrendData(:, 19), "LineWidth", 2.0)
-    ylabel("Pressure (psi)")
-    xlabel("Time (s)")
-    title("Detrended Pressures")
+    % %% Detrend diagram
+    % figure()
+    % subplot(2, 1, 1)
+    % plot(rawData(:, 3), rawData(:, 19), "LineWidth", 2.0)
+    % ylabel("Pressure (psi)", "LineWidth", 2.0)
+    % xlabel("Time (s)")
+    % title("Transducer Pressures")
+    % 
+    % subplot(2, 1, 2)
+    % plot(detrendData(:, 3), detrendData(:, 19), "LineWidth", 2.0)
+    % ylabel("Pressure (psi)")
+    % xlabel("Time (s)")
+    % title("Detrended Pressures")
 
     %% Calculating Values
 
     fprintf("Starting calculations \n")
 
     % Loops through each cycle, skips the incomplete cycle 1
+    % figure()
     for i = 2:numCycles - 1 % iterate through cycles
-    % for i = 20:20 
+
         % Extracts cycle data
         cycData = rawData(rawData(:, 5) == i, :); % Data in cycle i
         chargeRegionData = cycData(cycData(:, 7) > 0.00002, :);
@@ -157,15 +164,15 @@ for n = 1:20
         feVals(i - 1) = fe;
         dPValsControl(i - 1) = dPFit;
 
-        % Plot to demonstrate what a biexponential Fit is
+        % %%% Plot to demonstrate what a biexponential Fit is
         % figure()
         % scatter(timeVals(2:2:end), pressureVals(2:2:end), "LineWidth", 2.0); hold on;
         % plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2), "LineWidth", 2.0);
         % xlabel("Time (s)")
         % ylabel("Pressure (psi)")
         % legend("Transducer Data", "Biexponentially Fitted Data")
-
-        % Plot to demonstrate non-fitted data
+        % 
+        % %%% Plot to demonstrate non-fitted data
         % figure()
         % scatter(timeVals(2:4:end), pressureVals(2:4:end), "LineWidth", 2.0); hold on;
         % plot(timeVals, pressureVals, "LineWidth", 2.0);
@@ -173,23 +180,38 @@ for n = 1:20
         % ylabel("Pressure (psi)")
         % legend("Transducer Data", "Biexponentially Fitted Data")
 
-        % plots to demonstrate normalization
-        if i < 10
-            figure()
-            subplot(2, 1, 1)
-            plot(timeVals, pressureVals, "LineWidth", 2.0)
+        % subplot(3, 10, i)
+        % plot(timeVals, pressureVals); hold on;
+        % plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2));
+        % xlabel("Time");
+        % ylabel("Pressure")
+        % title("Cycle " + i)
+        % 
+        % if i == 15
+        %     figure()
+        %     plot(timeVals, pressureVals); hold on;
+        %     plot(pFitTimePressure(:, 1), pFitTimePressure(:, 2));
+        %     xlabel("Time");
+        %     ylabel("Pressure")
+        %     title("Cycle " + i)
+        % end
 
-            yline(pressureVals(1), '--k', "LineWidth", 1.0);
-            yline(pressureVals(end), '--k', "LineWidth", 1.0);
-            ylabel("Pressure (psi)")
-            xlabel("Time (s)")
-            subplot(2, 1, 2)
-            plot(pFitTimePressureNorm(:, 1), pFitTimePressureNorm(:, 2), "LineWidth", 2.0)
-            ylabel("Pressure (psi)")
-            xlabel("Time (s)")
-        end
+        % % plots to demonstrate normalization
+        % if i < 10
+        %     figure()
+        %     subplot(2, 1, 1)
+        %     plot(timeVals, pressureVals, "LineWidth", 2.0)
+        % 
+        %     yline(pressureVals(1), '--k', "LineWidth", 1.0);
+        %     yline(pressureVals(end), '--k', "LineWidth", 1.0);
+        %     ylabel("Pressure (psi)")
+        %     xlabel("Time (s)")
+        %     subplot(2, 1, 2)
+        %     plot(pFitTimePressureNorm(:, 1), pFitTimePressureNorm(:, 2), "LineWidth", 2.0)
+        %     ylabel("Pressure (psi)")
+        %     xlabel("Time (s)")
+        % end
         
-
         % Plot to demonstrate 20% Cutoff calculation errors + interpolation
         % if i < 20
         %     figure()
@@ -214,7 +236,6 @@ for n = 1:20
         %     xlabel("Time (s)")
         %     ylabel("Pressure (psi)")
         % end
-
 
         % if i == 20
         %     figure()
@@ -262,7 +283,7 @@ for n = 1:20
         for j = 1:9 % iterate through percentages
 
             % Calculates Mass Capture Values - not relevant to flux calcs
-            minPData =  pFitTimePressure(pFitTimePressure(:, 2) > minP(j), :);
+            minPData =  pFitTimePressure(pFitTimePressure(:, 2) >= minP(j), :);
             pStart = minPData(1, 1); % Start Time
             pEnd = minPData(end, 1); % End Time
             dP = pStart - pEnd; % Pressure drop
@@ -305,9 +326,6 @@ for n = 1:20
     cycColumn = (1:size(fluxVals)).';
     columnTitles = {'Cycle', 'Max', '20%', '30%', '40%', '50%', '60%', '70%', '80%', '90%', 'Full'};
 
-    
-
-
     % Round flux vals to 2 decimals
     fluxVals = round(fluxVals, 2);
     fluxValsInterp = round(fluxValsInterp, 2);
@@ -337,50 +355,54 @@ for n = 1:20
 
     fprintf("rawdata" + n + " ended" + "\n");
 
-    % %% Write data to Excel file
-    % excelFile = append('fluxComparisons', int2str(n), '.xlsx');
-    % 
-    % % Biexpontially fitted fluxVals 
-    % writematrix(fluxVals, excelFile, 'Sheet', 'Flux Vals (Control)', 'Range', 'A1'); % Sheet 1
-    % writematrix(fluxValsInterp, excelFile, 'Sheet', 'Flux Vals Interp', 'Range', 'A1'); % Sheet 2
-    % writematrix(fluxValsNorm, excelFile, 'Sheet', 'Flux Vals Norm', 'Range', 'A1'); % Sheet 3
-    % writematrix(fluxValsDetrend, excelFile, 'Sheet', 'Flux Vals Detrend', 'Range', 'A1'); % Sheet 4
-    % writematrix(fluxValsAll, excelFile, 'Sheet', 'Flux Vals All', 'Range', 'A1'); % Sheet 5
-    % 
-    % % Non fitted fluxVals 
-    % writematrix(fluxValsNoFit, excelFile, 'Sheet', 'Flux Vals No Fit', 'Range', 'A1'); % Sheet 6
-    % writematrix(fluxValsInterpNoFit, excelFile, 'Sheet', 'Flux Vals Interp No Fit', 'Range', 'A1'); % Sheet 7
-    % writematrix(fluxValsDetrendNoFit, excelFile, 'Sheet', 'Flux Vals Detrend No Fit', 'Range', 'A1'); % Sheet 8
-    % writematrix(fluxValsAllNoFit, excelFile, 'Sheet', 'Flux Vals All No Fit', 'Range', 'A1'); % Sheet 9
-    % 
-    % % Biexpontially fitted fluxVals diff 
-    % writematrix(diffInterp, excelFile, 'Sheet', 'Diff Interp', 'Range', 'A1'); % Sheet 10
-    % writematrix(diffNorm, excelFile, 'Sheet', 'Diff Norm', 'Range', 'A1'); % Sheet 11
-    % writematrix(diffDetrend, excelFile, 'Sheet', 'Diff Detrend', 'Range', 'A1'); % Sheet 12
-    % writematrix(diffAll, excelFile, 'Sheet', 'diff All', 'Range', 'A1'); % Sheet 13
-    % 
-    % % Non fitted fluxVals diff
-    % writematrix(diffNoFit, excelFile, 'Sheet', 'Diff No Fit', 'Range', 'A1'); % Sheet 14
-    % writematrix(diffInterpNoFit, excelFile, 'Sheet', 'Diff Interp No Fit', 'Range', 'A1'); % Sheet 15
-    % writematrix(diffDetrendNoFit, excelFile, 'Sheet', 'Diff Detrend No Fit', 'Range', 'A1'); % Sheet 16
-    % writematrix(diffAllNoFit, excelFile, 'Sheet', 'Diff All No Fit', 'Range', 'A1'); % Sheet 17
-    % 
-    % % Biexpontially fitted dP 
-    % writematrix(dPValsControl, excelFile, 'Sheet', 'dP Vals Control', 'Range', 'A1'); % Sheet 18
-    % writematrix(dPValsDetrend, excelFile, 'Sheet', 'dP Vals Detrend', 'Range', 'A1'); % Sheet 19
-    % writematrix(dPValsNorm, excelFile, 'Sheet', 'dP Vals Norm', 'Range', 'A1'); % Sheet 20
-    % writematrix(dPValsAll, excelFile, 'Sheet', 'dP Vals All', 'Range', 'A1'); % Sheet 21
-    % 
-    % % Biexponentially fitted dP
-    % writematrix(diffDPNorm, excelFile, 'Sheet', 'Diff dP Norm', 'Range', 'A1'); % Sheet 22
-    % writematrix(diffDPDetrend, excelFile, 'Sheet', 'Diff dP Detrend', 'Range', 'A1'); % Sheet 23
-    % writematrix(diffDPAll, excelFile, 'Sheet', 'Diff dP All', 'Range', 'A1'); % Sheet 24
-    % 
-    % writematrix(ccVals, excelFile, 'Sheet', 'cc vals', 'Range', 'A1') % Sheet 25
+    %% Write data to Excel file
+    if n < 10
+        num = append("0", int2str(n));
+    else
+        num = int2str(n);
+    end
+
+    excelFile = append('fluxComparisons', num, '.xlsx');
+
+    % Biexpontially fitted fluxVals 
+    writematrix(fluxVals, excelFile, 'Sheet', 'Flux Vals (Control)', 'Range', 'A1'); % Sheet 1
+    writematrix(fluxValsInterp, excelFile, 'Sheet', 'Flux Vals Interp', 'Range', 'A1'); % Sheet 2
+    writematrix(fluxValsNorm, excelFile, 'Sheet', 'Flux Vals Norm', 'Range', 'A1'); % Sheet 3
+    writematrix(fluxValsDetrend, excelFile, 'Sheet', 'Flux Vals Detrend', 'Range', 'A1'); % Sheet 4
+    writematrix(fluxValsAll, excelFile, 'Sheet', 'Flux Vals All', 'Range', 'A1'); % Sheet 5
+
+    % Non fitted fluxVals 
+    writematrix(fluxValsNoFit, excelFile, 'Sheet', 'Flux Vals No Fit', 'Range', 'A1'); % Sheet 6
+    writematrix(fluxValsInterpNoFit, excelFile, 'Sheet', 'Flux Vals Interp No Fit', 'Range', 'A1'); % Sheet 7
+    writematrix(fluxValsDetrendNoFit, excelFile, 'Sheet', 'Flux Vals Detrend No Fit', 'Range', 'A1'); % Sheet 8
+    writematrix(fluxValsAllNoFit, excelFile, 'Sheet', 'Flux Vals All No Fit', 'Range', 'A1'); % Sheet 9
+
+    % Biexpontially fitted fluxVals diff 
+    writematrix(diffInterp, excelFile, 'Sheet', 'Diff Interp', 'Range', 'A1'); % Sheet 10
+    writematrix(diffNorm, excelFile, 'Sheet', 'Diff Norm', 'Range', 'A1'); % Sheet 11
+    writematrix(diffDetrend, excelFile, 'Sheet', 'Diff Detrend', 'Range', 'A1'); % Sheet 12
+    writematrix(diffAll, excelFile, 'Sheet', 'diff All', 'Range', 'A1'); % Sheet 13
+
+    % Non fitted fluxVals diff
+    writematrix(diffNoFit, excelFile, 'Sheet', 'Diff No Fit', 'Range', 'A1'); % Sheet 14
+    writematrix(diffInterpNoFit, excelFile, 'Sheet', 'Diff Interp No Fit', 'Range', 'A1'); % Sheet 15
+    writematrix(diffDetrendNoFit, excelFile, 'Sheet', 'Diff Detrend No Fit', 'Range', 'A1'); % Sheet 16
+    writematrix(diffAllNoFit, excelFile, 'Sheet', 'Diff All No Fit', 'Range', 'A1'); % Sheet 17
+
+    % Biexpontially fitted dP 
+    writematrix(dPValsControl, excelFile, 'Sheet', 'dP Vals Control', 'Range', 'A1'); % Sheet 18
+    writematrix(dPValsDetrend, excelFile, 'Sheet', 'dP Vals Detrend', 'Range', 'A1'); % Sheet 19
+    writematrix(dPValsNorm, excelFile, 'Sheet', 'dP Vals Norm', 'Range', 'A1'); % Sheet 20
+    writematrix(dPValsAll, excelFile, 'Sheet', 'dP Vals All', 'Range', 'A1'); % Sheet 21
+
+    % Biexponentially fitted dP
+    writematrix(diffDPNorm, excelFile, 'Sheet', 'Diff dP Norm', 'Range', 'A1'); % Sheet 22
+    writematrix(diffDPDetrend, excelFile, 'Sheet', 'Diff dP Detrend', 'Range', 'A1'); % Sheet 23
+    writematrix(diffDPAll, excelFile, 'Sheet', 'Diff dP All', 'Range', 'A1'); % Sheet 24
+
+    writematrix(ccVals, excelFile, 'Sheet', 'cc vals', 'Range', 'A1') % Sheet 25
 
 end
-
-cd('..')
 
 %% Extraneous Functions
 
@@ -408,10 +430,6 @@ function [normalizedTPVals, normalizingDP] = normalizeTimePressureVals(timeVals,
     %{
     Calculate Normalized Pressure Values
     First Normalization: Normalized = (pressure - min) / dP
-    Second Normalization: 
-        a' = a/(a + c)
-        c' = c/(a + c) 
-        P = a' * exp(b * t) + c' * exp(d*t)
     %}
     normalizingValue = min(pressureVals); % Calculates baseline pressure
     normalizingDP = pressureVals(1) - mean(pressureVals(end - 4:end)); % Calculates range
@@ -514,11 +532,38 @@ function maxFlux = calculateFluxMax(timeVals, pressureVals, cellArea, cellVolume
     Takes maximum derivative value
     %}
     secToHr = 1/3600;
-    pFitCurve = fit(timeVals, pressureVals, 'exp2'); % Creates biexponential model of P vs t
+    pFitCurve = fit(timeVals, pressureVals, 'exp2', 'StartPoint', [0,0,0,0]); % Creates biexponential model of P vs t
     pDeriv = differentiate(pFitCurve, timeVals); % Differentiates pFitCurve with datapoints at x = timeVals
     gDeriv = -1 * psiToGCO2(pDeriv, cellVolume) / cellArea / secToHr; % Convert pDeriv from psi to g CO2
     maxFlux = max(gDeriv);
 end
 
+function files = findDatasheets(folder, target_string)
+    %{
+    Searches through input folder to find files with target string
+    Returns cell array of files
+    %}
 
+    % Initialize cell array
+    files = {};
+
+    % List all directories in parent folder
+    subfolders = dir(folder);
+
+    % Iterate over subfolders
+    for i = 1:length(subfolders)
+        if ~strcmp(subfolders(i).name, '.') && ~strcmp(subfolders(i).name, '..') && ~strcmp(subfolders(i).name, '100Co2')
+            % if directory, enter directory to look for files (recursive)
+            if subfolders(i).isdir()
+                files = [files; findDatasheets(fullfile(folder, subfolders(i).name), target_string)];
+
+            % If file, get file
+            else
+                if contains(subfolders(i).name, target_string)
+                    files = [files; fullfile(folder, subfolders(i).name)];
+                end
+            end
+        end
+    end
+end
 
