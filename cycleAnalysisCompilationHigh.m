@@ -138,7 +138,7 @@ function tabulateFluxes(fluxVals, numFiles, fileName)
         isolatedFluxVals = zeros(numFiles, 2);
         for j = 1:numFiles
             isolatedFluxVals(j, 1) = fluxVals(17, i, j); % Copies cycle 17
-            isolatedFluxVals(j, 2) = fluxVals(17, i, j); % Copies Cycle 18
+            isolatedFluxVals(j, 2) = fluxVals(18, i, j); % Copies Cycle 18
         end
         writematrix(isolatedFluxVals, excelFile, 'Sheet', percentage(i), 'Range', 'A1')
     end
