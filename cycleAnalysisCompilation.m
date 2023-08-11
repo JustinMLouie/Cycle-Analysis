@@ -5,142 +5,97 @@ clear;
 clc;
 
 % %%% Low Performance Arrays 
-% fluxVals = zeros(99, 10, 19);
-% fluxValsDetrend = zeros(99, 10, 19);
-% 
-% diffInterp = zeros(99, 10, 19);
-% diffNorm = zeros(99, 10, 19);
-% diffDetrend = zeros(99, 10, 19);
-% diffAll = zeros(99, 10, 19);
-% 
-% diffNoFit = zeros(99, 10, 13);
-% diffInterpNoFit = zeros(99, 10, 13);
-% diffDetrendNoFit = zeros(99, 10, 13);
-% diffAllNoFit = zeros(99, 10, 13);
-% 
-% dPValsControl = zeros(99, 19);
-% dPValsNorm = zeros(99, 19);
-% dPValsDetrend = zeros(99, 19);
-% dPValsAll = zeros(99, 19);
-% 
-% diffDPNorm = zeros(99, 19);
-% diffDPDetrend = zeros(99, 19);
-% diffDPAll = zeros(99, 19);
-% 
-% ccVals = zeros(99, 2, 20);
+fluxVals = zeros(99, 10, 19);
+fluxValsDetrend = zeros(99, 10, 19);
 
-%%% High Performance Arrays 
-fluxVals = zeros(29, 10, 1);
-fluxValsDetrend = zeros(29, 10, 1);
+diffInterp = zeros(99, 10, 19);
+diffNorm = zeros(99, 10, 19);
+diffDetrend = zeros(99, 10, 19);
+diffAll = zeros(99, 10, 19);
 
-diffInterp = zeros(29, 10, 1);
-diffNorm = zeros(29, 10, 1);
-diffDetrend = zeros(29, 10, 1);
-diffAll = zeros(29, 10, 1);
+diffNoFit = zeros(99, 10, 13);
+diffInterpNoFit = zeros(99, 10, 13);
+diffDetrendNoFit = zeros(99, 10, 13);
+diffAllNoFit = zeros(99, 10, 13);
 
-diffNoFit = zeros(29, 10, 1);
-diffInterpNoFit = zeros(29, 10, 1);
-diffDetrendNoFit = zeros(29, 10, 1);
-diffAllNoFit = zeros(29, 10, 1);
+dPValsControl = zeros(99, 19);
+dPValsNorm = zeros(99, 19);
+dPValsDetrend = zeros(99, 19);
+dPValsAll = zeros(99, 19);
 
-dPValsControl = zeros(29, 1);
-dPValsNorm = zeros(29, 1);
-dPValsDetrend = zeros(29, 1);
-dPValsAll = zeros(29, 1);
+diffDPNorm = zeros(99, 19);
+diffDPDetrend = zeros(99, 19);
+diffDPAll = zeros(99, 19);
 
-diffDPNorm = zeros(29, 1);
-diffDPDetrend = zeros(29, 11);
-diffDPAll = zeros(29, 11);
+ccVals = zeros(99, 2, 20);
 
-ccVals = zeros(29, 2, 1);
 
 % Load % differences for each flux calculation
 for i = 1:1
-    rawFileName = append('Flux Comparisons High Performance/fluxComparisons', int2str(i), '.xlsx'); % Sets the file name to be imported
+
+    rawFileName = append('Flux Comparisons Low Performance/fluxComparisons', int2str(i), '.xlsx'); % Sets the file name to be imported
     
     fprintf(rawFileName)
 
     ccVals(:, :, i) = readmatrix(rawFileName, 'Sheet', 25);
 
-    % % Biexponential comparisons: dataset 3 omitted due to missing data
-    % if i < 3 
-    %     fluxVals(:, :, i) = readmatrix(rawFileName, 'Sheet', 1);
-    %     fluxValsDetrend(:, :, i) = readmatrix(rawFileName, 'Sheet', 4);
-    % 
-    %     diffInterp(:, :, i) = readmatrix(rawFileName, 'Sheet', 10); % Pulls data from 10th sheet
-    %     diffNorm(:, :, i) = readmatrix(rawFileName, 'Sheet', 11); % Pulls data from 11th sheet
-    %     diffDetrend(:, :, i) = readmatrix(rawFileName, 'Sheet', 12); % Pulls data from 12th sheet
-    %     diffAll(:, :, i) = readmatrix(rawFileName, 'Sheet', 13); % Pulls data from 13th sheet
-    % 
-    %     dPValsControl(:, i) = readmatrix(rawFileName, 'Sheet', 18);
-    %     dPValsDetrend(:, i) = readmatrix(rawFileName, 'Sheet', 19);
-    %     dPValsNorm(:, i) = readmatrix(rawFileName, 'Sheet', 20);
-    %     dPValsAll(:, i) = readmatrix(rawFileName, 'Sheet', 21);
-    % 
-    %     diffDPNorm(:, i) = readmatrix(rawFileName, 'Sheet', 22);
-    %     diffDPDetrend(:, i) = readmatrix(rawFileName, 'Sheet', 23);
-    %     diffDPAll(:, i) = readmatrix(rawFileName, 'Sheet', 24);
-    % 
-    % elseif i > 3
-    %     fluxVals(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 1);
-    %     fluxValsDetrend(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 4);
-    % 
-    %     diffInterp(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 10); % Pulls data from 10th sheet
-    %     diffNorm(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 11); % Pulls data from 11th sheet
-    %     diffDetrend(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 12); % Pulls data from 12th sheet
-    %     diffAll(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 13); % Pulls data from 13th sheet
-    % 
-    %     dPValsControl(:, i  - 1) = readmatrix(rawFileName, 'Sheet', 18);
-    %     dPValsDetrend(:, i  - 1) = readmatrix(rawFileName, 'Sheet', 19);
-    %     dPValsNorm(:, i - 1) = readmatrix(rawFileName, 'Sheet', 20);
-    %     dPValsAll(:, i - 1) = readmatrix(rawFileName, 'Sheet', 21);
-    % 
-    %     diffDPNorm(:, i - 1) = readmatrix(rawFileName, 'Sheet', 22);
-    %     diffDPDetrend(:, i - 1) = readmatrix(rawFileName, 'Sheet', 23);
-    %     diffDPAll(:, i - 1) = readmatrix(rawFileName, 'Sheet', 24);
-    % end
-    % 
-    % % Non-Biexponential comparisons: 
-    % % Datasets 1-5 omitted due to missing data
-    % % Datasets 6, 10 omitted due to outliers
-    % 
-    % 
-    % if i > 6 
-    %     diffNoFit(:, :, i - 6) = readmatrix(rawFileName, 'Sheet', 14); % Pulls data from 14th sheet
-    %     diffInterpNoFit(:, :, i - 6) = readmatrix(rawFileName, 'Sheet', 15); % Pulls data from 15th sheet
-    %     diffDetrendNoFit(:, :, i - 6) = readmatrix(rawFileName, 'Sheet', 16); % Pulls data from 16th sheet
-    %     diffAllNoFit(:, :, i - 6) = readmatrix(rawFileName, 'Sheet', 17); % Pulls data from 17th sheet
-    % end
-    % 
-    % if i > 10 % exclude fluxComparisons10
-    %     diffNoFit(:, :, i - 7) = readmatrix(rawFileName, 'Sheet', 14); % Pulls data from 14th sheet
-    %     diffInterpNoFit(:, :, i - 7) = readmatrix(rawFileName, 'Sheet', 15); % Pulls data from 15th sheet
-    %     diffDetrendNoFit(:, :, i - 7) = readmatrix(rawFileName, 'Sheet', 16); % Pulls data from 16th sheet
-    %     diffAllNoFit(:, :, i - 7) = readmatrix(rawFileName, 'Sheet', 17); % Pulls data from 17th sheet
-    % end
+    % Biexponential comparisons: dataset 3 omitted due to missing data
+    if i < 3 
+        fluxVals(:, :, i) = readmatrix(rawFileName, 'Sheet', 1);
+        fluxValsDetrend(:, :, i) = readmatrix(rawFileName, 'Sheet', 4);
+
+        diffInterp(:, :, i) = readmatrix(rawFileName, 'Sheet', 10); % Pulls data from 10th sheet
+        diffNorm(:, :, i) = readmatrix(rawFileName, 'Sheet', 11); % Pulls data from 11th sheet
+        diffDetrend(:, :, i) = readmatrix(rawFileName, 'Sheet', 12); % Pulls data from 12th sheet
+        diffAll(:, :, i) = readmatrix(rawFileName, 'Sheet', 13); % Pulls data from 13th sheet
+
+        dPValsControl(:, i) = readmatrix(rawFileName, 'Sheet', 18);
+        dPValsDetrend(:, i) = readmatrix(rawFileName, 'Sheet', 19);
+        dPValsNorm(:, i) = readmatrix(rawFileName, 'Sheet', 20);
+        dPValsAll(:, i) = readmatrix(rawFileName, 'Sheet', 21);
+
+        diffDPNorm(:, i) = readmatrix(rawFileName, 'Sheet', 22);
+        diffDPDetrend(:, i) = readmatrix(rawFileName, 'Sheet', 23);
+        diffDPAll(:, i) = readmatrix(rawFileName, 'Sheet', 24);
+
+    elseif i > 3
+        fluxVals(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 1);
+        fluxValsDetrend(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 4);
+
+        diffInterp(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 10); % Pulls data from 10th sheet
+        diffNorm(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 11); % Pulls data from 11th sheet
+        diffDetrend(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 12); % Pulls data from 12th sheet
+        diffAll(:, :, i - 1) = readmatrix(rawFileName, 'Sheet', 13); % Pulls data from 13th sheet
+
+        dPValsControl(:, i  - 1) = readmatrix(rawFileName, 'Sheet', 18);
+        dPValsDetrend(:, i  - 1) = readmatrix(rawFileName, 'Sheet', 19);
+        dPValsNorm(:, i - 1) = readmatrix(rawFileName, 'Sheet', 20);
+        dPValsAll(:, i - 1) = readmatrix(rawFileName, 'Sheet', 21);
+
+        diffDPNorm(:, i - 1) = readmatrix(rawFileName, 'Sheet', 22);
+        diffDPDetrend(:, i - 1) = readmatrix(rawFileName, 'Sheet', 23);
+        diffDPAll(:, i - 1) = readmatrix(rawFileName, 'Sheet', 24);
+    end
+
+    % Non-Biexponential comparisons: 
+    % Datasets 1-5 omitted due to missing data
+    % Datasets 6, 10 omitted due to outliers
+
+
+    if i > 6 
+        diffNoFit(:, :, i - 6) = readmatrix(rawFileName, 'Sheet', 14); % Pulls data from 14th sheet
+        diffInterpNoFit(:, :, i - 6) = readmatrix(rawFileName, 'Sheet', 15); % Pulls data from 15th sheet
+        diffDetrendNoFit(:, :, i - 6) = readmatrix(rawFileName, 'Sheet', 16); % Pulls data from 16th sheet
+        diffAllNoFit(:, :, i - 6) = readmatrix(rawFileName, 'Sheet', 17); % Pulls data from 17th sheet
+    end
+
+    if i > 10 % exclude fluxComparisons10
+        diffNoFit(:, :, i - 7) = readmatrix(rawFileName, 'Sheet', 14); % Pulls data from 14th sheet
+        diffInterpNoFit(:, :, i - 7) = readmatrix(rawFileName, 'Sheet', 15); % Pulls data from 15th sheet
+        diffDetrendNoFit(:, :, i - 7) = readmatrix(rawFileName, 'Sheet', 16); % Pulls data from 16th sheet
+        diffAllNoFit(:, :, i - 7) = readmatrix(rawFileName, 'Sheet', 17); % Pulls data from 17th sheet
+    end
      
-    fluxVals(:, :, i) = readmatrix(rawFileName, 'Sheet', 1);
-    fluxValsDetrend(:, :, i) = readmatrix(rawFileName, 'Sheet', 4);
-
-    diffInterp(:, :, i) = readmatrix(rawFileName, 'Sheet', 10); % Pulls data from 10th sheet
-    diffNorm(:, :, i) = readmatrix(rawFileName, 'Sheet', 11); % Pulls data from 11th sheet
-    diffDetrend(:, :, i) = readmatrix(rawFileName, 'Sheet', 12); % Pulls data from 12th sheet
-    diffAll(:, :, i) = readmatrix(rawFileName, 'Sheet', 13); % Pulls data from 13th sheet
-
-    dPValsControl(:, i) = readmatrix(rawFileName, 'Sheet', 18);
-    dPValsDetrend(:, i) = readmatrix(rawFileName, 'Sheet', 19);
-    dPValsNorm(:, i) = readmatrix(rawFileName, 'Sheet', 20);
-    dPValsAll(:, i) = readmatrix(rawFileName, 'Sheet', 21);
-
-    diffDPNorm(:, i) = readmatrix(rawFileName, 'Sheet', 22);
-    diffDPDetrend(:, i) = readmatrix(rawFileName, 'Sheet', 23);
-    diffDPAll(:, i) = readmatrix(rawFileName, 'Sheet', 24);
-
-    diffNoFit(:, :, i) = readmatrix(rawFileName, 'Sheet', 14); % Pulls data from 14th sheet
-    diffInterpNoFit(:, :, i) = readmatrix(rawFileName, 'Sheet', 15); % Pulls data from 15th sheet
-    diffDetrendNoFit(:, :, i) = readmatrix(rawFileName, 'Sheet', 16); % Pulls data from 16th sheet
-    diffAllNoFit(:, :, i) = readmatrix(rawFileName, 'Sheet', 17); % Pulls data from 17th sheet
-
 end 
 
 %{
@@ -152,8 +107,7 @@ Column layout
 %}
 
 % Creates array of cycles
-% cycles = (1:99).'; % Low Performance Data
-cycles = (1:29).'; % High Performance Data
+cycles = (1:99).'; % Low Performance Data
 
 %% Calculations
 
