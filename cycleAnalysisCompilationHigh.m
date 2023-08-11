@@ -4,6 +4,7 @@
 clear;
 clc;
 
+
 %%% High Performance Arrays 
 
 numValidFiles = 14;
@@ -13,6 +14,10 @@ fluxValsControl = zeros(numCycles, 10, numValidFiles);
 fluxValsInterp = zeros(numCycles, 10, numValidFiles);
 fluxValsNoFit = zeros(numCycles, 10, numValidFiles);
 fluxValsInterpNoFit = zeros(numCycles, 10, numValidFiles);
+
+ccVals = zeros(numCycles, 2, numValidFiles);
+
+comparisonGraphingOn = false;
 
 % Read data from fluxComparison files
 
@@ -29,6 +34,13 @@ for i = 1:numFiles
     fluxValsInterp(:, :, i) = readmatrix(rawFileName, 'Sheet', 2);
     fluxValsNoFit(:, :, i) = readmatrix(rawFileName, 'Sheet', 6);
     fluxValsInterpNoFit(:, :, i) = readmatrix(rawFileName, 'Sheet', 7);
+
+    diffInterp(:, :, i) = readmatrix(rawFileName, 'Sheet', 10); % Pulls data from 10th sheet
+    
+
+    
+    ccVals(:, :, i) = readmatrix(rawFileName, 'Sheet', 25);
+
 end 
 
 %{
@@ -39,7 +51,7 @@ Column layout
 
 %}
 
-%% Tabulate 
+%% Tabulation and Calculations 
 
 % Creates array of cycles
 cycles = (1:numCycles).'; % High Performance Data
@@ -55,59 +67,85 @@ tabulateFluxes(fluxValsInterpNoFit, numFiles, "No Fit Interpolated Flux Values")
 [noFitAvgs, noFitmins, noFitMaxs] = calculateStats(fluxValsControl, 3);
 [interpNoFitAvgs, interpNoFitMins, interpNoFitMaxs] = calculateStats(fluxValsControl, 3);
 
-fprintf("Script completed");
+[ccAvgs, ccMins, ccMaxs] = calculateStats(ccVals, 3);
+
+fprintf("Calculations completed");
+
+%% Control Graphs
+
+figure();
+plot(cycles, controlAvgs(:, 8), 'b', 'LineWidth', 2);
+xlabel("Cycle"); 
+ylabel("Flux (gCO2 / (m^2 * h))"); 
+
+
+%% CC Graphs
+figure();
+plot(cycles, ccAvgs(:, 1), 'b', 'LineWidth', 2.0); hold on; 
+% fill([cycles; flipud(cycles)], [ccMins(:, 1); flipud(ccMaxs(:, 1))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none'); 
+xlabel("Cycle");
+ylabel("Charge Capacity (uAh)");
+
+
+figure();
+plot(cycles, ccAvgs(:, 2), 'b', 'LineWidth', 2.0); hold on; 
+% fill([cycles; flipud(cycles)], [ccMins(:, 2); flipud(ccMaxs(:, 2))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none'); 
+xlabel("Cycle");
+ylabel("Charge Capacity (Coulumbs)");
+
+
 
 %% Comparison Graphs
+if comparisonGraphingOn == true
+    for i = 2:2:10 % loop through to create graphs of the 20%, 40%, 60%, 80%, and 100% graphs
 
-for i = 2:2:10 % loop through to create graphs of the 20%, 40%, 60%, 80%, and 100% graphs
+        percent = i * 10;
 
-    percent = i * 10;
+        %%% Flux Comparisons
+        figure()
+        sgtitle(percent + "% Flux Avg Comparisons"); % Create title of overall Figure
 
-    %%% Flux Comparisons
-    figure() 
-    sgtitle(percent + "% Flux Avg Comparisons"); % Create title of overall Figure
+        % Control: Fitted
+        subplot(2, 2, 1)
+        plot(cycles, controlAvgs(:, i), 'b', 'LineWidth', 2.0); hold on;
+        fill([cycles; flipud(cycles)], [controlMins(:, i); flipud(controlMaxs(:, i))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+        ylim([0 100])
+        xlabel("Cycle");
+        ylabel("Flux (gCO2 / (m^2 * h))");
+        title("Fitted (Control)");
 
-    % Control: Fitted
-    subplot(2, 2, 1) 
-    plot(cycles, controlAvgs(:, i), 'b', 'LineWidth', 2.0); hold on; 
-    fill([cycles; flipud(cycles)], [controlMins(:, i); flipud(controlMaxs(:, i))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none'); 
-    ylim([0 100])
-    xlabel("Cycle"); 
-    ylabel("Flux (gCO2 / (m^2 * h))"); 
-    title("Fitted (Control)");
+        % Fitted + Interp
+        subplot(2, 2, 2)
+        plot(cycles, interpAvgs(:, i), 'b', 'LineWidth', 2.0); hold on;
+        fill([cycles; flipud(cycles)], [interpMins(:, i); flipud(interpMaxs(:, i))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+        ylim([0 100])
+        xlabel("Cycle");
+        ylabel("Flux (gCO2 / (m^2 * h))");
+        title("Fitted + Interpolated");
 
-    % Fitted + Interp
-    subplot(2, 2, 2) 
-    plot(cycles, interpAvgs(:, i), 'b', 'LineWidth', 2.0); hold on; 
-    fill([cycles; flipud(cycles)], [interpMins(:, i); flipud(interpMaxs(:, i))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none'); 
-    ylim([0 100])
-    xlabel("Cycle"); 
-    ylabel("Flux (gCO2 / (m^2 * h))"); 
-    title("Fitted + Interpolated");
+        % Not Fitted
+        subplot(2, 2, 3)
+        plot(cycles, noFitAvgs(:, i), 'b', 'LineWidth', 2.0); hold on;
+        fill([cycles; flipud(cycles)], [noFitmins(:, i); flipud(noFitMaxs(:, i))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+        ylim([0 100])
+        xlabel("Cycle");
+        ylabel("Flux (gCO2 / (m^2 * h))");
+        title("Non-Fitted");
 
-    % Not Fitted
-    subplot(2, 2, 3) 
-    plot(cycles, noFitAvgs(:, i), 'b', 'LineWidth', 2.0); hold on; 
-    fill([cycles; flipud(cycles)], [noFitmins(:, i); flipud(noFitMaxs(:, i))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none'); 
-    ylim([0 100])
-    xlabel("Cycle"); 
-    ylabel("Flux (gCO2 / (m^2 * h))"); 
-    title("Non-Fitted");
+        % Not Fitted + Interp
+        subplot(2, 2, 4)
+        plot(cycles, interpNoFitAvgs(:, i), 'b', 'LineWidth', 2.0); hold on;
+        fill([cycles; flipud(cycles)], [interpNoFitMins(:, i); flipud(interpNoFitMaxs(:, i))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+        ylim([0 100])
+        xlabel("Cycle");
+        ylabel("Flux (gCO2 / (m^2 * h))");
+        title("Non-Fitted + Interpolated");
 
-    % Not Fitted + Interp
-    subplot(2, 2, 4) 
-    plot(cycles, interpNoFitAvgs(:, i), 'b', 'LineWidth', 2.0); hold on; 
-    fill([cycles; flipud(cycles)], [interpNoFitMins(:, i); flipud(interpNoFitMaxs(:, i))], 'b', 'FaceAlpha', 0.2, 'EdgeColor', 'none'); 
-    ylim([0 100])
-    xlabel("Cycle"); 
-    ylabel("Flux (gCO2 / (m^2 * h))"); 
-    title("Non-Fitted + Interpolated");
+        fileName = append("Figures/fluxComparisons", int2str(percent), ".png"); % Creates file name for figure
+        saveas(gcf,fileName); % Saves current figure
 
-    fileName = append("Figures/fluxComparisons", int2str(percent), ".png"); % Creates file name for figure
-    saveas(gcf,fileName); % Saves current figure
- 
+    end
 end
-
 
 
 %% Functions
